@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MMAE - Music/Media Audio Editor</title>
+<style>
+/* ── Reset & Base ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f0f13;
+  --surface: #1a1a24;
+  --surface2: #24243a;
+  --border: #333355;
+  --text: #e0e0f0;
+  --text-dim: #8888aa;
+  --accent: #6c5ce7;
+  --accent-hover: #7f70f0;
+  --danger: #e74c3c;
+  --danger-hover: #f55a4e;
+  --success: #2ecc71;
+  --radius: 8px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Layout ────────────────────────────────────────────────────────────── */
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+header {
+  text-align: center;
+  padding: 32px 0 24px;
+}
+
+header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+header p {
+  color: var(--text-dim);
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+.btn-danger:hover { background: var(--danger-hover); }
+
+.btn-secondary {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: var(--border); }
+
+/* ── Phase 1: URL Input ────────────────────────────────────────────────── */
+.url-form {
+  display: flex;
+  gap: 12px;
+}
+
+.url-form input {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+
+.url-form input:focus {
+  border-color: var(--accent);
+}
+
+/* ── Status / Error ────────────────────────────────────────────────────── */
+.status {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-dim);
+  min-height: 20px;
+}
+
+.status.error { color: var(--danger); }
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--text-dim);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Phase 2: Editor ───────────────────────────────────────────────────── */
+#editor { display: none; }
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.toolbar .title {
+  font-weight: 600;
+  font-size: 15px;
+  margin-right: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 400px;
+}
+
+.toolbar .time-display {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--text-dim);
+  min-width: 120px;
+}
+
+/* ── Spectrogram Container ─────────────────────────────────────────────── */
+.spectrogram-wrap {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #000;
+}
+
+.spectrogram-wrap canvas {
+  display: block;
+}
+
+/* ── Overlay layer for regions + playhead ──────────────────────────────── */
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  pointer-events: none;
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: #fff;
+  pointer-events: none;
+  z-index: 20;
+  transition: left 0.03s linear;
+}
+
+/* ── Regions ───────────────────────────────────────────────────────────── */
+.region {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  pointer-events: auto;
+  cursor: grab;
+  z-index: 10;
+  border-left: 3px solid;
+  border-right: 3px solid;
+}
+
+.region:active { cursor: grabbing; }
+
+.region .handle {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 15;
+}
+
+.region .handle-left { left: -5px; }
+.region .handle-right { right: -5px; }
+
+.region .region-label {
+  position: absolute;
+  top: 2px;
+  left: 6px;
+  font-size: 11px;
+  color: #fff;
+  background: rgba(0,0,0,0.6);
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+.region .region-delete {
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(231,76,60,0.9);
+  color: #fff;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 16;
+  border: none;
+  padding: 0;
+}
+
+/* ── Regions List ──────────────────────────────────────────────────────── */
+.regions-list {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.region-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: monospace;
+}
+
+.region-tag .color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* ── Zoom info ─────────────────────────────────────────────────────────── */
+.zoom-info {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>MMAE</h1>
+    <p>Music / Media Audio Editor</p>
+  </header>
+
+  <!-- Phase 1: URL Input -->
+  <div class="card" id="download-card">
+    <div class="url-form">
+      <input type="text" id="url-input" placeholder="Paste a YouTube URL..." autocomplete="off">
+      <button class="btn-primary" id="download-btn">Download</button>
+    </div>
+    <div class="status" id="download-status"></div>
+  </div>
+
+  <!-- Phase 2: Editor -->
+  <div id="editor">
+    <div class="card">
+      <div class="toolbar">
+        <span class="title" id="audio-title"></span>
+        <span class="time-display" id="time-display">0:00.0 / 0:00.0</span>
+        <button class="btn-secondary" id="play-btn">Play</button>
+        <button class="btn-secondary" id="add-region-btn">+ Add Region</button>
+        <button class="btn-primary" id="clip-btn">Clip All</button>
+      </div>
+      <div class="spectrogram-wrap" id="spectrogram-wrap">
+        <canvas id="spectrogram"></canvas>
+        <div class="overlay" id="overlay">
+          <div class="playhead" id="playhead" style="left:0"></div>
+        </div>
+      </div>
+      <div class="zoom-info">Scroll to zoom horizontally. Click on spectrogram to seek.</div>
+      <div class="regions-list" id="regions-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────
+const state = {
+  fileId: null,
+  filename: '',
+  duration: 0,
+  audioBuffer: null,
+  audioContext: null,
+  sourceNode: null,
+  isPlaying: false,
+  playStartTime: 0,
+  playOffset: 0,
+  pxPerSec: 100,       // horizontal zoom
+  minPxPerSec: 20,
+  maxPxPerSec: 1000,
+  regions: [],          // { id, start, end, color }
+  nextRegionId: 1,
+  spectrogramData: null,  // Float32Array[][] magnitudes
+  fftSize: 2048,
+  hopSize: 512,
+  animFrame: null,
+};
+
+const REGION_COLORS = [
+  'rgba(108,92,231,0.35)',
+  'rgba(0,184,148,0.35)',
+  'rgba(253,121,168,0.35)',
+  'rgba(255,177,66,0.35)',
+  'rgba(116,185,255,0.35)',
+  'rgba(232,67,147,0.35)',
+  'rgba(85,239,196,0.35)',
+  'rgba(255,118,117,0.35)',
+];
+
+const REGION_BORDER_COLORS = [
+  '#6c5ce7', '#00b894', '#fd79a8', '#ffb142',
+  '#74b9ff', '#e84393', '#55efc4', '#ff7675',
+];
+
+// ── DOM refs ─────────────────────────────────────────────────────────────
+const $ = (sel) => document.querySelector(sel);
+const urlInput = $('#url-input');
+const downloadBtn = $('#download-btn');
+const downloadStatus = $('#download-status');
+const editorEl = $('#editor');
+const audioTitle = $('#audio-title');
+const timeDisplay = $('#time-display');
+const playBtn = $('#play-btn');
+const addRegionBtn = $('#add-region-btn');
+const clipBtn = $('#clip-btn');
+const canvas = $('#spectrogram');
+const ctx = canvas.getContext('2d');
+const spectrogramWrap = $('#spectrogram-wrap');
+const overlay = $('#overlay');
+const playhead = $('#playhead');
+const regionsList = $('#regions-list');
+
+// ── Phase 1: Download ────────────────────────────────────────────────────
+downloadBtn.addEventListener('click', doDownload);
+urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doDownload(); });
+
+async function doDownload() {
+  const url = urlInput.value.trim();
+  if (!url) return;
+
+  downloadBtn.disabled = true;
+  downloadStatus.className = 'status';
+  downloadStatus.innerHTML = '<span class="spinner"></span> Downloading audio...';
+
+  try {
+    const resp = await fetch('/api/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.detail || 'Download failed');
+    }
+    const data = await resp.json();
+    state.fileId = data.file_id;
+    state.filename = data.filename;
+    state.duration = data.duration;
+
+    downloadStatus.innerHTML = '<span class="spinner"></span> Loading audio for visualization...';
+    await loadAudio(data.file_id);
+
+    downloadStatus.textContent = 'Ready!';
+    downloadStatus.className = 'status';
+    showEditor();
+  } catch (e) {
+    downloadStatus.textContent = e.message;
+    downloadStatus.className = 'status error';
+  } finally {
+    downloadBtn.disabled = false;
+  }
+}
+
+// ── Load & Decode Audio ──────────────────────────────────────────────────
+async function loadAudio(fileId) {
+  state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const resp = await fetch(`/api/audio/${fileId}`);
+  const arrayBuf = await resp.arrayBuffer();
+  state.audioBuffer = await state.audioContext.decodeAudioData(arrayBuf);
+  state.duration = state.audioBuffer.duration;
+  computeSpectrogram();
+}
+
+// ── STFT / Spectrogram ──────────────────────────────────────────────────
+function computeSpectrogram() {
+  const buf = state.audioBuffer;
+  // Mix to mono
+  const numChannels = buf.numberOfChannels;
+  const length = buf.length;
+  const mono = new Float32Array(length);
+  for (let ch = 0; ch < numChannels; ch++) {
+    const chData = buf.getChannelData(ch);
+    for (let i = 0; i < length; i++) {
+      mono[i] += chData[i] / numChannels;
+    }
+  }
+
+  const fftSize = state.fftSize;
+  const hopSize = state.hopSize;
+  const numFrames = Math.floor((length - fftSize) / hopSize) + 1;
+  const numBins = fftSize / 2;
+
+  // Hanning window
+  const window = new Float32Array(fftSize);
+  for (let i = 0; i < fftSize; i++) {
+    window[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (fftSize - 1)));
+  }
+
+  // Pre-compute bit-reversal table
+  const logN = Math.log2(fftSize);
+  const bitRev = new Uint32Array(fftSize);
+  for (let i = 0; i < fftSize; i++) {
+    let rev = 0;
+    let val = i;
+    for (let j = 0; j < logN; j++) {
+      rev = (rev << 1) | (val & 1);
+      val >>= 1;
+    }
+    bitRev[i] = rev;
+  }
+
+  // Pre-compute twiddle factors
+  const twiddleRe = new Float64Array(fftSize / 2);
+  const twiddleIm = new Float64Array(fftSize / 2);
+  for (let i = 0; i < fftSize / 2; i++) {
+    const angle = -2 * Math.PI * i / fftSize;
+    twiddleRe[i] = Math.cos(angle);
+    twiddleIm[i] = Math.sin(angle);
+  }
+
+  // Allocate magnitude array as flat Float32Array for performance
+  const magnitudes = new Float32Array(numFrames * numBins);
+
+  // Working arrays for FFT
+  const re = new Float64Array(fftSize);
+  const im = new Float64Array(fftSize);
+
+  for (let frame = 0; frame < numFrames; frame++) {
+    const offset = frame * hopSize;
+
+    // Apply window + bit-reversal permutation
+    for (let i = 0; i < fftSize; i++) {
+      re[bitRev[i]] = mono[offset + i] * window[i];
+    }
+    im.fill(0);
+
+    // Cooley-Tukey FFT
+    for (let size = 2; size <= fftSize; size *= 2) {
+      const halfSize = size / 2;
+      const step = fftSize / size;
+      for (let i = 0; i < fftSize; i += size) {
+        for (let j = 0; j < halfSize; j++) {
+          const twIdx = j * step;
+          const tRe = re[i + j + halfSize] * twiddleRe[twIdx] - im[i + j + halfSize] * twiddleIm[twIdx];
+          const tIm = re[i + j + halfSize] * twiddleIm[twIdx] + im[i + j + halfSize] * twiddleRe[twIdx];
+          re[i + j + halfSize] = re[i + j] - tRe;
+          im[i + j + halfSize] = im[i + j] - tIm;
+          re[i + j] += tRe;
+          im[i + j] += tIm;
+        }
+      }
+    }
+
+    // Compute magnitudes (dB scale)
+    const baseIdx = frame * numBins;
+    for (let i = 0; i < numBins; i++) {
+      const mag = Math.sqrt(re[i] * re[i] + im[i] * im[i]);
+      magnitudes[baseIdx + i] = 20 * Math.log10(mag + 1e-10);
+    }
+  }
+
+  state.spectrogramData = magnitudes;
+  state.numFrames = numFrames;
+  state.numBins = numBins;
+
+  // Find global min/max for normalization
+  let minVal = Infinity, maxVal = -Infinity;
+  for (let i = 0; i < magnitudes.length; i++) {
+    if (magnitudes[i] < minVal) minVal = magnitudes[i];
+    if (magnitudes[i] > maxVal) maxVal = magnitudes[i];
+  }
+  state.magMin = minVal;
+  state.magMax = maxVal;
+
+  drawSpectrogram();
+}
+
+// ── Viridis-like Colormap ────────────────────────────────────────────────
+function viridis(t) {
+  // Simplified viridis approximation (0..1) → [r, g, b] (0..255)
+  t = Math.max(0, Math.min(1, t));
+  const r = Math.round(255 * Math.max(0, Math.min(1, -0.35 + 2.5 * t - 1.7 * t * t)));
+  const g = Math.round(255 * Math.max(0, Math.min(1, -0.05 + 1.5 * t - 0.7 * t * t)));
+  const b = Math.round(255 * Math.max(0, Math.min(1, 0.5 + 0.8 * t - 1.8 * t * t + 0.9 * t * t * t)));
+  return [r, g, b];
+}
+
+// Build lookup table for colormap (256 entries)
+const colormapLUT = new Uint8Array(256 * 3);
+for (let i = 0; i < 256; i++) {
+  const [r, g, b] = viridis(i / 255);
+  colormapLUT[i * 3] = r;
+  colormapLUT[i * 3 + 1] = g;
+  colormapLUT[i * 3 + 2] = b;
+}
+
+// ── Draw Spectrogram ─────────────────────────────────────────────────────
+function drawSpectrogram() {
+  if (!state.spectrogramData) return;
+
+  const numFrames = state.numFrames;
+  const numBins = state.numBins;
+  const magnitudes = state.spectrogramData;
+  const minVal = state.magMin;
+  const range = state.magMax - minVal || 1;
+
+  // Canvas size based on zoom level
+  const timePerFrame = state.hopSize / state.audioBuffer.sampleRate;
+  const totalWidth = Math.ceil(numFrames * state.pxPerSec * timePerFrame);
+  const height = 300;
+
+  canvas.width = totalWidth;
+  canvas.height = height;
+
+  overlay.style.width = totalWidth + 'px';
+  overlay.style.height = height + 'px';
+
+  const imageData = ctx.createImageData(totalWidth, height);
+  const data = imageData.data;
+
+  // For each pixel column, find the nearest STFT frame
+  // For each pixel row, find the nearest frequency bin
+  for (let px = 0; px < totalWidth; px++) {
+    const frame = Math.min(numFrames - 1, Math.round(px / (state.pxPerSec * timePerFrame)));
+    const frameBase = frame * numBins;
+
+    for (let py = 0; py < height; py++) {
+      // py=0 is top = high frequency, py=height-1 is bottom = low frequency
+      const bin = Math.min(numBins - 1, Math.round((1 - py / height) * numBins));
+      const val = (magnitudes[frameBase + bin] - minVal) / range;
+      const lutIdx = Math.round(val * 255) * 3;
+
+      const idx = (py * totalWidth + px) * 4;
+      data[idx] = colormapLUT[lutIdx];
+      data[idx + 1] = colormapLUT[lutIdx + 1];
+      data[idx + 2] = colormapLUT[lutIdx + 2];
+      data[idx + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  updateRegionPositions();
+}
+
+// ── Show Editor ──────────────────────────────────────────────────────────
+function showEditor() {
+  editorEl.style.display = 'block';
+  audioTitle.textContent = state.filename;
+  updateTimeDisplay();
+}
+
+// ── Time Formatting ──────────────────────────────────────────────────────
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = (sec % 60).toFixed(1);
+  return `${m}:${s.padStart(4, '0')}`;
+}
+
+function updateTimeDisplay() {
+  const cur = state.isPlaying
+    ? state.playOffset + (state.audioContext.currentTime - state.playStartTime)
+    : state.playOffset;
+  timeDisplay.textContent = `${formatTime(Math.min(cur, state.duration))} / ${formatTime(state.duration)}`;
+}
+
+// ── Playback ─────────────────────────────────────────────────────────────
+playBtn.addEventListener('click', togglePlay);
+
+function togglePlay() {
+  if (state.isPlaying) {
+    stopPlayback();
+  } else {
+    startPlayback(state.playOffset);
+  }
+}
+
+function startPlayback(offset) {
+  if (!state.audioBuffer || !state.audioContext) return;
+  if (state.audioContext.state === 'suspended') state.audioContext.resume();
+
+  if (state.sourceNode) {
+    state.sourceNode.onended = null;
+    state.sourceNode.stop();
+  }
+
+  const source = state.audioContext.createBufferSource();
+  source.buffer = state.audioBuffer;
+  source.connect(state.audioContext.destination);
+  source.onended = () => {
+    if (state.isPlaying) {
+      state.isPlaying = false;
+      state.playOffset = 0;
+      playBtn.textContent = 'Play';
+      updatePlayhead();
+    }
+  };
+
+  state.sourceNode = source;
+  state.playStartTime = state.audioContext.currentTime;
+  state.playOffset = offset;
+  state.isPlaying = true;
+  playBtn.textContent = 'Pause';
+  source.start(0, offset);
+  animatePlayhead();
+}
+
+function stopPlayback() {
+  if (state.sourceNode) {
+    state.sourceNode.onended = null;
+    state.sourceNode.stop();
+  }
+  state.playOffset = state.playOffset + (state.audioContext.currentTime - state.playStartTime);
+  if (state.playOffset >= state.duration) state.playOffset = 0;
+  state.isPlaying = false;
+  playBtn.textContent = 'Play';
+  if (state.animFrame) cancelAnimationFrame(state.animFrame);
+  updatePlayhead();
+}
+
+function animatePlayhead() {
+  if (!state.isPlaying) return;
+  updatePlayhead();
+  updateTimeDisplay();
+  state.animFrame = requestAnimationFrame(animatePlayhead);
+}
+
+function updatePlayhead() {
+  const cur = state.isPlaying
+    ? state.playOffset + (state.audioContext.currentTime - state.playStartTime)
+    : state.playOffset;
+  const pxPos = (cur / state.duration) * canvas.width;
+  playhead.style.left = pxPos + 'px';
+  updateTimeDisplay();
+}
+
+// ── Seek on Click ────────────────────────────────────────────────────────
+spectrogramWrap.addEventListener('click', (e) => {
+  if (e.target.closest('.region') || e.target.closest('.region-delete')) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left + spectrogramWrap.scrollLeft;
+  const time = (x / canvas.width) * state.duration;
+
+  if (state.isPlaying) {
+    stopPlayback();
+    startPlayback(Math.max(0, Math.min(time, state.duration)));
+  } else {
+    state.playOffset = Math.max(0, Math.min(time, state.duration));
+    updatePlayhead();
+  }
+});
+
+// ── Zoom ─────────────────────────────────────────────────────────────────
+spectrogramWrap.addEventListener('wheel', (e) => {
+  e.preventDefault();
+
+  const rect = spectrogramWrap.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left + spectrogramWrap.scrollLeft;
+  const timeAtMouse = (mouseX / canvas.width) * state.duration;
+
+  const factor = e.deltaY < 0 ? 1.2 : 1 / 1.2;
+  state.pxPerSec = Math.max(state.minPxPerSec, Math.min(state.maxPxPerSec, state.pxPerSec * factor));
+
+  drawSpectrogram();
+
+  // Keep the same time position under the mouse after zoom
+  const newMouseX = (timeAtMouse / state.duration) * canvas.width;
+  spectrogramWrap.scrollLeft = newMouseX - (e.clientX - rect.left);
+}, { passive: false });
+
+// ── Regions ──────────────────────────────────────────────────────────────
+addRegionBtn.addEventListener('click', () => {
+  // Default region: center 10% of visible area
+  const scrollFrac = spectrogramWrap.scrollLeft / (canvas.width || 1);
+  const visFrac = spectrogramWrap.clientWidth / (canvas.width || 1);
+  const centerTime = (scrollFrac + visFrac / 2) * state.duration;
+  const regionLen = Math.min(5, state.duration * 0.1); // 5 sec or 10% of duration
+  const start = Math.max(0, centerTime - regionLen / 2);
+  const end = Math.min(state.duration, start + regionLen);
+
+  const colorIdx = state.regions.length % REGION_COLORS.length;
+  const region = {
+    id: state.nextRegionId++,
+    start,
+    end,
+    color: REGION_COLORS[colorIdx],
+    borderColor: REGION_BORDER_COLORS[colorIdx],
+  };
+  state.regions.push(region);
+  createRegionElement(region);
+  updateRegionsList();
+});
+
+function createRegionElement(region) {
+  const el = document.createElement('div');
+  el.className = 'region';
+  el.dataset.regionId = region.id;
+  el.style.background = region.color;
+  el.style.borderColor = region.borderColor;
+
+  const label = document.createElement('div');
+  label.className = 'region-label';
+  el.appendChild(label);
+
+  const delBtn = document.createElement('div');
+  delBtn.className = 'region-delete';
+  delBtn.textContent = '\u00d7';
+  delBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    removeRegion(region.id);
+  });
+  el.appendChild(delBtn);
+
+  const handleLeft = document.createElement('div');
+  handleLeft.className = 'handle handle-left';
+  el.appendChild(handleLeft);
+
+  const handleRight = document.createElement('div');
+  handleRight.className = 'handle handle-right';
+  el.appendChild(handleRight);
+
+  overlay.appendChild(el);
+
+  // Drag logic
+  let dragType = null; // 'move', 'left', 'right'
+  let dragStartX = 0;
+  let dragStartStart = 0;
+  let dragStartEnd = 0;
+
+  function onPointerDown(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    const target = e.target;
+    if (target === handleLeft) dragType = 'left';
+    else if (target === handleRight) dragType = 'right';
+    else if (target === delBtn) return;
+    else dragType = 'move';
+
+    dragStartX = e.clientX + spectrogramWrap.scrollLeft;
+    dragStartStart = region.start;
+    dragStartEnd = region.end;
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+  }
+
+  function onPointerMove(e) {
+    const dx = (e.clientX + spectrogramWrap.scrollLeft) - dragStartX;
+    const dt = (dx / canvas.width) * state.duration;
+
+    if (dragType === 'move') {
+      let newStart = dragStartStart + dt;
+      let newEnd = dragStartEnd + dt;
+      const len = newEnd - newStart;
+      if (newStart < 0) { newStart = 0; newEnd = len; }
+      if (newEnd > state.duration) { newEnd = state.duration; newStart = newEnd - len; }
+      region.start = newStart;
+      region.end = newEnd;
+    } else if (dragType === 'left') {
+      region.start = Math.max(0, Math.min(region.end - 0.05, dragStartStart + dt));
+    } else if (dragType === 'right') {
+      region.end = Math.min(state.duration, Math.max(region.start + 0.05, dragStartEnd + dt));
+    }
+
+    positionRegionElement(el, region);
+    updateRegionsList();
+  }
+
+  function onPointerUp() {
+    dragType = null;
+    document.removeEventListener('pointermove', onPointerMove);
+    document.removeEventListener('pointerup', onPointerUp);
+  }
+
+  el.addEventListener('pointerdown', onPointerDown);
+
+  positionRegionElement(el, region);
+}
+
+function positionRegionElement(el, region) {
+  const leftPx = (region.start / state.duration) * canvas.width;
+  const rightPx = (region.end / state.duration) * canvas.width;
+  el.style.left = leftPx + 'px';
+  el.style.width = (rightPx - leftPx) + 'px';
+
+  const label = el.querySelector('.region-label');
+  if (label) {
+    label.textContent = `${formatTime(region.start)} - ${formatTime(region.end)}`;
+  }
+}
+
+function updateRegionPositions() {
+  const regionEls = overlay.querySelectorAll('.region');
+  regionEls.forEach(el => {
+    const id = parseInt(el.dataset.regionId);
+    const region = state.regions.find(r => r.id === id);
+    if (region) positionRegionElement(el, region);
+  });
+}
+
+function removeRegion(id) {
+  state.regions = state.regions.filter(r => r.id !== id);
+  const el = overlay.querySelector(`.region[data-region-id="${id}"]`);
+  if (el) el.remove();
+  updateRegionsList();
+}
+
+function updateRegionsList() {
+  regionsList.innerHTML = '';
+  state.regions.forEach(r => {
+    const tag = document.createElement('div');
+    tag.className = 'region-tag';
+    tag.innerHTML = `
+      <span class="color-dot" style="background:${r.borderColor}"></span>
+      ${formatTime(r.start)} - ${formatTime(r.end)}
+      <button class="btn-danger" onclick="window._removeRegion(${r.id})">\u00d7</button>
+    `;
+    regionsList.appendChild(tag);
+  });
+}
+
+// Expose for inline onclick
+window._removeRegion = removeRegion;
+
+// ── Clip & Download ──────────────────────────────────────────────────────
+clipBtn.addEventListener('click', async () => {
+  if (!state.fileId || state.regions.length === 0) {
+    alert('Add at least one region first.');
+    return;
+  }
+
+  clipBtn.disabled = true;
+  clipBtn.textContent = 'Clipping...';
+
+  try {
+    const resp = await fetch('/api/clip', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file_id: state.fileId,
+        regions: state.regions.map(r => ({ start: r.start, end: r.end })),
+      }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.detail || 'Clip failed');
+    }
+
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'clips.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert('Error: ' + e.message);
+  } finally {
+    clipBtn.disabled = false;
+    clipBtn.textContent = 'Clip All';
+  }
+});
+</script>
+</body>
+</html>

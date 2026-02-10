@@ -288,11 +288,38 @@ button {
   display: inline-block;
 }
 
-/* ── Time axis ─────────────────────────────────────────────────────────── */
-#time-axis {
+/* ── Timeline Bar ─────────────────────────────────────────────────────── */
+.timeline-bar {
+  position: relative;
+  height: 48px;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.timeline-bar canvas {
   display: block;
-  height: 28px;
-  border-top: 1px solid var(--border);
+  width: 100%;
+  height: 100%;
+}
+
+.timeline-viewport {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: rgba(108, 92, 231, 0.2);
+  border-left: 2px solid var(--accent);
+  border-right: 2px solid var(--accent);
+  cursor: grab;
+  z-index: 2;
+  min-width: 4px;
+}
+
+.timeline-viewport:active {
+  cursor: grabbing;
 }
 
 /* ── Drag selection ────────────────────────────────────────────────────── */
@@ -345,7 +372,10 @@ button {
         <div class="overlay" id="overlay">
           <div class="playhead" id="playhead" style="left:0"></div>
         </div>
-        <canvas id="time-axis"></canvas>
+      </div>
+      <div class="timeline-bar" id="timeline-bar">
+        <canvas id="timeline-canvas"></canvas>
+        <div class="timeline-viewport" id="timeline-viewport"></div>
       </div>
       <div class="zoom-info">Scroll to zoom horizontally. Click to seek. Drag to select a region.</div>
       <div class="regions-list" id="regions-list"></div>
@@ -374,6 +404,8 @@ const state = {
   fftSize: 2048,
   hopSize: 512,
   animFrame: null,
+  monoData: null,
+  waveformPeaks: null,
 };
 
 const REGION_COLORS = [
@@ -409,8 +441,10 @@ const spectrogramWrap = $('#spectrogram-wrap');
 const overlay = $('#overlay');
 const playhead = $('#playhead');
 const regionsList = $('#regions-list');
-const timeAxisCanvas = $('#time-axis');
-const timeAxisCtx = timeAxisCanvas.getContext('2d');
+const timelineBar = $('#timeline-bar');
+const timelineCanvas = $('#timeline-canvas');
+const timelineCtx = timelineCanvas.getContext('2d');
+const timelineViewport = $('#timeline-viewport');
 
 // ── Phase 1: Download ────────────────────────────────────────────────────
 downloadBtn.addEventListener('click', doDownload);
@@ -554,6 +588,7 @@ function computeSpectrogram() {
   state.spectrogramData = magnitudes;
   state.numFrames = numFrames;
   state.numBins = numBins;
+  state.monoData = mono;
 
   // Find global min/max for normalization
   let minVal = Infinity, maxVal = -Infinity;
@@ -565,6 +600,8 @@ function computeSpectrogram() {
   state.magMax = maxVal;
 
   drawSpectrogram();
+  computeWaveformPeaks();
+  drawTimeline();
 }
 
 // ── Viridis-like Colormap ────────────────────────────────────────────────
@@ -631,92 +668,179 @@ function drawSpectrogram() {
   }
 
   ctx.putImageData(imageData, 0, 0);
-  drawTimeAxis();
   updateRegionPositions();
+  updateTimelineViewport();
 }
 
-// ── Time Axis ─────────────────────────────────────────────────────────
-function formatTimeAxis(seconds, interval) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  if (interval < 1) {
-    return `${m}:${s.toFixed(1).padStart(4, '0')}`;
+// ── Waveform Peaks ────────────────────────────────────────────────────
+function computeWaveformPeaks() {
+  const mono = state.monoData;
+  if (!mono) return;
+  const width = timelineBar.clientWidth || 1150;
+  const samplesPerPx = mono.length / width;
+  const peaks = new Float32Array(width);
+  for (let i = 0; i < width; i++) {
+    const start = Math.floor(i * samplesPerPx);
+    const end = Math.min(mono.length, Math.floor((i + 1) * samplesPerPx));
+    let max = 0;
+    for (let j = start; j < end; j++) {
+      const v = Math.abs(mono[j]);
+      if (v > max) max = v;
+    }
+    peaks[i] = max;
   }
-  return `${m}:${Math.floor(s).toString().padStart(2, '0')}`;
+  state.waveformPeaks = peaks;
 }
 
-function drawTimeAxis() {
-  if (!state.spectrogramData) return;
+// ── Timeline Drawing ──────────────────────────────────────────────────
+function drawTimeline() {
+  if (!state.waveformPeaks) return;
 
-  const width = canvas.width;
-  const height = 28;
+  const barWidth = timelineBar.clientWidth;
+  const barHeight = timelineBar.clientHeight;
   const dpr = window.devicePixelRatio || 1;
 
-  timeAxisCanvas.width = width * dpr;
-  timeAxisCanvas.height = height * dpr;
-  timeAxisCanvas.style.width = width + 'px';
-  timeAxisCanvas.style.height = height + 'px';
-  timeAxisCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  timelineCanvas.width = barWidth * dpr;
+  timelineCanvas.height = barHeight * dpr;
+  timelineCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // Read theme colors from CSS variables
   const cs = getComputedStyle(document.documentElement);
+  const bgColor = cs.getPropertyValue('--surface').trim() || '#1a1a24';
   const textDim = cs.getPropertyValue('--text-dim').trim() || '#8888aa';
   const borderColor = cs.getPropertyValue('--border').trim() || '#333355';
-  const bgColor = cs.getPropertyValue('--surface').trim() || '#1a1a24';
+  const accent = cs.getPropertyValue('--accent').trim() || '#6c5ce7';
 
-  // Fill background
-  timeAxisCtx.fillStyle = bgColor;
-  timeAxisCtx.fillRect(0, 0, width, height);
+  // Background
+  timelineCtx.fillStyle = bgColor;
+  timelineCtx.fillRect(0, 0, barWidth, barHeight);
 
-  // Choose nice interval based on pxPerSec
+  // Draw waveform
+  const peaks = state.waveformPeaks;
+  const halfH = (barHeight - 14) / 2; // leave room for ticks at bottom
+  const centerY = halfH;
+  timelineCtx.strokeStyle = accent;
+  timelineCtx.globalAlpha = 0.5;
+  timelineCtx.lineWidth = 1;
+  timelineCtx.beginPath();
+  for (let i = 0; i < peaks.length && i < barWidth; i++) {
+    const h = peaks[i] * halfH;
+    timelineCtx.moveTo(i + 0.5, centerY - h);
+    timelineCtx.lineTo(i + 0.5, centerY + h);
+  }
+  timelineCtx.stroke();
+  timelineCtx.globalAlpha = 1.0;
+
+  // Draw time ticks along the bottom
+  const duration = state.duration;
+  if (duration <= 0) return;
+
+  const tickAreaTop = barHeight - 14;
   const niceIntervals = [0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
-  const minPxBetweenLabels = 80;
+  const minPxBetweenLabels = 60;
+  const pxPerSec = barWidth / duration;
   let majorInterval = niceIntervals[niceIntervals.length - 1];
   for (const iv of niceIntervals) {
-    if (iv * state.pxPerSec >= minPxBetweenLabels) {
+    if (iv * pxPerSec >= minPxBetweenLabels) {
       majorInterval = iv;
       break;
     }
   }
 
-  // Minor ticks: subdivide major into 4 or 5 parts
+  // Minor ticks
   let minorCount = 4;
   if (majorInterval === 0.5 || majorInterval === 5 || majorInterval === 50) minorCount = 5;
   const minorInterval = majorInterval / minorCount;
 
-  const duration = state.duration;
-  const majorTickH = 10;
-  const minorTickH = 5;
-
-  // Draw minor ticks
-  timeAxisCtx.strokeStyle = borderColor;
-  timeAxisCtx.lineWidth = 1;
-  timeAxisCtx.beginPath();
+  timelineCtx.strokeStyle = borderColor;
+  timelineCtx.lineWidth = 1;
+  timelineCtx.beginPath();
   for (let t = 0; t <= duration + minorInterval / 2; t += minorInterval) {
-    const x = Math.round((t / duration) * width) + 0.5;
-    if (x > width) break;
-    timeAxisCtx.moveTo(x, 0);
-    timeAxisCtx.lineTo(x, minorTickH);
+    const x = Math.round((t / duration) * barWidth) + 0.5;
+    if (x > barWidth) break;
+    timelineCtx.moveTo(x, tickAreaTop);
+    timelineCtx.lineTo(x, tickAreaTop + 4);
   }
-  timeAxisCtx.stroke();
+  timelineCtx.stroke();
 
-  // Draw major ticks + labels
-  timeAxisCtx.strokeStyle = textDim;
-  timeAxisCtx.fillStyle = textDim;
-  timeAxisCtx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-  timeAxisCtx.textAlign = 'center';
-  timeAxisCtx.textBaseline = 'top';
-  timeAxisCtx.beginPath();
+  // Major ticks + labels
+  timelineCtx.strokeStyle = textDim;
+  timelineCtx.fillStyle = textDim;
+  timelineCtx.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+  timelineCtx.textAlign = 'center';
+  timelineCtx.textBaseline = 'top';
+  timelineCtx.beginPath();
   for (let t = 0; t <= duration + majorInterval / 2; t += majorInterval) {
-    const x = Math.round((t / duration) * width) + 0.5;
-    if (x > width) break;
-    timeAxisCtx.moveTo(x, 0);
-    timeAxisCtx.lineTo(x, majorTickH);
-    const label = formatTimeAxis(t, majorInterval);
-    timeAxisCtx.fillText(label, x, majorTickH + 2);
+    const x = Math.round((t / duration) * barWidth) + 0.5;
+    if (x > barWidth) break;
+    timelineCtx.moveTo(x, tickAreaTop);
+    timelineCtx.lineTo(x, tickAreaTop + 7);
+    const m = Math.floor(t / 60);
+    const s = t % 60;
+    const label = majorInterval < 1
+      ? `${m}:${s.toFixed(1).padStart(4, '0')}`
+      : `${m}:${Math.floor(s).toString().padStart(2, '0')}`;
+    timelineCtx.fillText(label, x, tickAreaTop + 5);
   }
-  timeAxisCtx.stroke();
+  timelineCtx.stroke();
+
+  updateTimelineViewport();
 }
+
+// ── Timeline Viewport Indicator ───────────────────────────────────────
+function updateTimelineViewport() {
+  if (!state.spectrogramData) return;
+  const barWidth = timelineBar.clientWidth;
+  const totalCanvasWidth = canvas.width;
+  if (totalCanvasWidth <= 0) return;
+
+  const scrollLeft = spectrogramWrap.scrollLeft;
+  const visibleWidth = spectrogramWrap.clientWidth;
+
+  const leftFrac = scrollLeft / totalCanvasWidth;
+  const visFrac = visibleWidth / totalCanvasWidth;
+
+  timelineViewport.style.left = (leftFrac * barWidth) + 'px';
+  timelineViewport.style.width = Math.max(4, visFrac * barWidth) + 'px';
+}
+
+// ── Timeline Scroll Sync ──────────────────────────────────────────────
+spectrogramWrap.addEventListener('scroll', updateTimelineViewport);
+
+// ── Timeline Interactions ─────────────────────────────────────────────
+timelineBar.addEventListener('pointerdown', (e) => {
+  if (!state.spectrogramData) return;
+  const barRect = timelineBar.getBoundingClientRect();
+
+  if (e.target === timelineViewport) {
+    // Drag viewport to pan
+    e.preventDefault();
+    const startX = e.clientX;
+    const startScroll = spectrogramWrap.scrollLeft;
+    const barWidth = timelineBar.clientWidth;
+    const totalCanvasWidth = canvas.width;
+
+    function onMove(ev) {
+      const dx = ev.clientX - startX;
+      const scrollDelta = (dx / barWidth) * totalCanvasWidth;
+      spectrogramWrap.scrollLeft = startScroll + scrollDelta;
+    }
+
+    function onUp() {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+    }
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  } else {
+    // Click to navigate: center spectrogram on clicked time
+    const x = e.clientX - barRect.left;
+    const barWidth = timelineBar.clientWidth;
+    const frac = x / barWidth;
+    const targetScrollCenter = frac * canvas.width;
+    spectrogramWrap.scrollLeft = targetScrollCenter - spectrogramWrap.clientWidth / 2;
+  }
+});
 
 // ── Show Editor ──────────────────────────────────────────────────────────
 function showEditor() {
@@ -797,6 +921,8 @@ function animatePlayhead() {
   if (!state.isPlaying) return;
   updatePlayhead();
   updateTimeDisplay();
+  drawTimeline();
+  drawTimelinePlayhead();
   state.animFrame = requestAnimationFrame(animatePlayhead);
 }
 
@@ -1127,6 +1253,35 @@ clipBtn.addEventListener('click', async () => {
     clipBtn.textContent = 'Clip All';
   }
 });
+
+// ── Window Resize ─────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  if (state.audioBuffer) {
+    computeWaveformPeaks();
+    drawTimeline();
+  }
+});
+
+// ── Timeline Playhead ─────────────────────────────────────────────────
+function drawTimelinePlayhead() {
+  if (!state.waveformPeaks || !state.isPlaying) return;
+  const cur = state.playOffset + (state.audioContext.currentTime - state.playStartTime);
+  const frac = Math.min(cur, state.duration) / state.duration;
+  const barWidth = timelineBar.clientWidth;
+  const barHeight = timelineBar.clientHeight;
+  const dpr = window.devicePixelRatio || 1;
+  const x = frac * barWidth;
+
+  timelineCtx.save();
+  timelineCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  timelineCtx.strokeStyle = '#fff';
+  timelineCtx.lineWidth = 1.5;
+  timelineCtx.beginPath();
+  timelineCtx.moveTo(x, 0);
+  timelineCtx.lineTo(x, barHeight);
+  timelineCtx.stroke();
+  timelineCtx.restore();
+}
 </script>
 </body>
 </html>

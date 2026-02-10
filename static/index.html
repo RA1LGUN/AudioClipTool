@@ -980,7 +980,6 @@ function updatePlayhead() {
     selectionDiv.style.width = (right - left) + 'px';
 
     // Auto-scroll when near edges
-    const wrapRect = spectrogramWrap.getBoundingClientRect();
     const edgeZone = 40;
     if (e.clientX < wrapRect.left + edgeZone) {
       spectrogramWrap.scrollLeft -= 8;

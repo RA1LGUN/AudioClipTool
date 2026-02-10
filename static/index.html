@@ -100,9 +100,10 @@ button {
 .url-form {
   display: flex;
   gap: 12px;
+  align-items: center;
 }
 
-.url-form input {
+.url-form input[type="text"] {
   flex: 1;
   padding: 10px 16px;
   border-radius: var(--radius);
@@ -113,8 +114,38 @@ button {
   outline: none;
 }
 
-.url-form input:focus {
+.url-form input[type="text"]:focus {
   border-color: var(--accent);
+}
+
+.upload-separator {
+  color: var(--text-dim);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.upload-label:hover {
+  background: var(--border);
+}
+
+.upload-label input[type="file"] {
+  display: none;
 }
 
 .url-queue {
@@ -149,6 +180,10 @@ button {
 }
 
 .url-queue-item .queue-status.downloading {
+  color: var(--accent);
+}
+
+.url-queue-item .queue-status.uploading {
   color: var(--accent);
 }
 
@@ -451,7 +486,11 @@ button {
     <div class="url-form">
       <input type="text" id="url-input" placeholder="Paste YouTube URL(s)..." autocomplete="off">
       <button class="btn-secondary" id="add-btn">Add</button>
-      <button class="btn-primary" id="download-all-btn" disabled>Download All</button>
+      <span class="upload-separator">or</span>
+      <label class="upload-label">Upload Files
+        <input type="file" id="file-input" multiple accept=".mp3,.wav,.flac,.ogg,.m4a,.aac,.wma,.opus,.webm,audio/*">
+      </label>
+      <button class="btn-primary" id="process-all-btn" disabled>Process All</button>
     </div>
     <div class="url-queue" id="url-queue"></div>
     <div class="status" id="download-status"></div>
@@ -514,14 +553,15 @@ const tracks = [];
 let activeTrackId = null;
 let nextTrackId = 1;
 
-// == URL Queue ================================================================
-const urlQueue = [];  // { id, url, status: 'pending'|'downloading'|'loading'|'done'|'error', error? }
+// == URL/File Queue ===========================================================
+const urlQueue = [];  // { id, type: 'url'|'file', url?, file?, name, status: 'pending'|'downloading'|'uploading'|'loading'|'done'|'error', error? }
 let nextQueueId = 1;
-let isDownloading = false;
+let isProcessing = false;
 
 const urlInput = document.getElementById('url-input');
 const addBtn = document.getElementById('add-btn');
-const downloadAllBtn = document.getElementById('download-all-btn');
+const fileInput = document.getElementById('file-input');
+const processAllBtn = document.getElementById('process-all-btn');
 const urlQueueEl = document.getElementById('url-queue');
 const downloadStatus = document.getElementById('download-status');
 const tracksContainer = document.getElementById('tracks-container');
@@ -531,16 +571,27 @@ const stopAllBtn = document.getElementById('stop-all-btn');
 
 addBtn.addEventListener('click', addUrls);
 urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addUrls(); });
-downloadAllBtn.addEventListener('click', downloadAll);
+fileInput.addEventListener('change', addFiles);
+processAllBtn.addEventListener('click', processAll);
 
 function addUrls() {
   const raw = urlInput.value.trim();
   if (!raw) return;
   const urls = raw.split(/\n+/).map(u => u.trim()).filter(Boolean);
   for (const url of urls) {
-    urlQueue.push({ id: nextQueueId++, url, status: 'pending' });
+    urlQueue.push({ id: nextQueueId++, type: 'url', url, name: url, status: 'pending' });
   }
   urlInput.value = '';
+  renderQueue();
+}
+
+function addFiles() {
+  const files = fileInput.files;
+  if (!files || files.length === 0) return;
+  for (const file of files) {
+    urlQueue.push({ id: nextQueueId++, type: 'file', file, name: file.name, status: 'pending' });
+  }
+  fileInput.value = '';
   renderQueue();
 }
 
@@ -560,7 +611,7 @@ function renderQueue() {
 
     const urlSpan = document.createElement('span');
     urlSpan.className = 'url-text';
-    urlSpan.textContent = item.url;
+    urlSpan.textContent = item.name;
     div.appendChild(urlSpan);
 
     const statusSpan = document.createElement('span');
@@ -570,6 +621,9 @@ function renderQueue() {
     } else if (item.status === 'downloading') {
       statusSpan.className += ' downloading';
       statusSpan.innerHTML = '<span class="spinner"></span>downloading';
+    } else if (item.status === 'uploading') {
+      statusSpan.className += ' uploading';
+      statusSpan.innerHTML = '<span class="spinner"></span>uploading';
     } else if (item.status === 'loading') {
       statusSpan.className += ' downloading';
       statusSpan.innerHTML = '<span class="spinner"></span>loading';
@@ -593,17 +647,83 @@ function renderQueue() {
     urlQueueEl.appendChild(div);
   }
 
-  downloadAllBtn.disabled = urlQueue.filter(q => q.status === 'pending').length === 0 || isDownloading;
+  processAllBtn.disabled = urlQueue.filter(q => q.status === 'pending').length === 0 || isProcessing;
 }
 
-async function downloadAll() {
-  if (isDownloading) return;
-  isDownloading = true;
-  downloadAllBtn.disabled = true;
+async function processAll() {
+  if (isProcessing) return;
+  isProcessing = true;
+  processAllBtn.disabled = true;
   downloadStatus.textContent = '';
 
   const pending = urlQueue.filter(q => q.status === 'pending');
-  for (const item of pending) {
+  const pendingFiles = pending.filter(q => q.type === 'file');
+  const pendingUrls = pending.filter(q => q.type === 'url');
+
+  // Batch-upload all file items at once
+  if (pendingFiles.length > 0) {
+    for (const item of pendingFiles) {
+      item.status = 'uploading';
+    }
+    renderQueue();
+
+    try {
+      const formData = new FormData();
+      for (const item of pendingFiles) {
+        formData.append('files', item.file);
+      }
+
+      const resp = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.detail || 'Upload failed');
+      }
+
+      const results = await resp.json();
+
+      // Create tracks for each uploaded file
+      for (let i = 0; i < results.length; i++) {
+        const data = results[i];
+        const item = pendingFiles[i];
+
+        item.status = 'loading';
+        renderQueue();
+
+        try {
+          const track = createTrackState(data.file_id, data.filename, data.duration);
+          tracks.push(track);
+          createTrackPanel(track);
+          await loadAudio(track);
+          computeWaveformPeaks(track);
+          drawTimeline(track);
+          updateGlobalControls();
+
+          item.status = 'done';
+          renderQueue();
+        } catch (e) {
+          item.status = 'error';
+          item.error = e.message;
+          renderQueue();
+        }
+      }
+    } catch (e) {
+      // Mark all pending files as error
+      for (const item of pendingFiles) {
+        if (item.status !== 'done') {
+          item.status = 'error';
+          item.error = e.message;
+        }
+      }
+      renderQueue();
+    }
+  }
+
+  // Process URL items sequentially
+  for (const item of pendingUrls) {
     item.status = 'downloading';
     renderQueue();
 
@@ -622,7 +742,6 @@ async function downloadAll() {
       item.status = 'loading';
       renderQueue();
 
-      // Create track
       const track = createTrackState(data.file_id, data.filename, data.duration);
       tracks.push(track);
       createTrackPanel(track);
@@ -640,9 +759,9 @@ async function downloadAll() {
     }
   }
 
-  isDownloading = false;
-  downloadAllBtn.disabled = urlQueue.filter(q => q.status === 'pending').length === 0;
-  downloadStatus.textContent = 'All downloads processed.';
+  isProcessing = false;
+  processAllBtn.disabled = urlQueue.filter(q => q.status === 'pending').length === 0;
+  downloadStatus.textContent = 'All items processed.';
 }
 
 // == Track State Factory ======================================================

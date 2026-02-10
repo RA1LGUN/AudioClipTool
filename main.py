@@ -287,7 +287,7 @@ async def clip_multi(req: ClipMultiRequest):
                 "content": f"start timestamp {region.start:.2f} / end timestamp {region.end:.2f}",
                 "type": "TEXT",
             })
-            data_items.append({"content": f"Download URL {url}", "type": "TEXT"})
+            # data_items.append({"content": f"Download URL {url}", "type": "TEXT"})
 
     logger.info("clip-multi done: %d data items generated", len(data_items))
     return [{"info": {"data": data_items}}]

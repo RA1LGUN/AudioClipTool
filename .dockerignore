@@ -1,0 +1,14 @@
+.venv/
+.git/
+.vscode/
+.idea/
+__pycache__/
+downloads/
+.env
+uv.lock
+*.py[cod]
+*.egg-info/
+dist/
+build/
+Thumbs.db
+.DS_Store

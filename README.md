@@ -1,4 +1,4 @@
-# MMAE - Music/Media Audio Editor
+# AudioClipTool
 
 A web-based audio editor for downloading, visualizing, and clipping audio from YouTube or local files.
 

@@ -230,7 +230,7 @@ async def clip_multi(req: ClipMultiRequest):
         raise HTTPException(status_code=400, detail="No tracks specified")
 
     timestamp = int(time.time())
-    clips = []
+    data_items = []
 
     for track in req.tracks:
         path = get_audio_path(track.file_id)
@@ -254,9 +254,16 @@ async def clip_multi(req: ClipMultiRequest):
             name = f"clip_{i:03d}_{region.start:.2f}s-{region.end:.2f}s.wav"
             key = f"clips/{timestamp}_{safe_name}/{name}"
             url = upload_to_r2(clip_bytes, key)
-            clips.append({"track": track.track_name, "name": name, "url": url})
 
-    return {"clips": clips}
+            data_items.append({"content": name, "type": "TITLE"})
+            data_items.append({"content": url, "type": "AUDIO"})
+            data_items.append({
+                "content": f"start timestamp {region.start:.2f} / end timestamp {region.end:.2f}",
+                "type": "TEXT",
+            })
+            data_items.append({"content": f"Download URL {url}", "type": "TEXT"})
+
+    return [{"info": {"data": data_items}}]
 
 
 # Serve static files (CSS, JS, favicon, etc.)

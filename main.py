@@ -3,7 +3,6 @@
 import os
 import uuid
 import time
-import json
 import zipfile
 import io
 from pathlib import Path
@@ -13,11 +12,13 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pydub import AudioSegment
+import yt_dlp
 
 DOWNLOADS_DIR = Path(__file__).parent / "downloads"
 DOWNLOADS_DIR.mkdir(exist_ok=True)
 
 MAX_AGE_SECONDS = 3600  # 1 hour
+PROXY = os.environ.get("MMAE_PROXY", "")
 
 app = FastAPI(title="MMAE")
 
@@ -65,12 +66,10 @@ async def index():
 
 @app.post("/api/download")
 async def download_audio(req: DownloadRequest):
-    cleanup_old_files()
+    # cleanup_old_files()
 
     file_id = uuid.uuid4().hex[:12]
     output_path = DOWNLOADS_DIR / f"{file_id}.wav"
-
-    import yt_dlp
 
     ydl_opts = {
         "format": "bestaudio/best",
@@ -85,6 +84,9 @@ async def download_audio(req: DownloadRequest):
         "quiet": True,
         "no_warnings": True,
     }
+
+    if PROXY:
+        ydl_opts["proxy"] = PROXY
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:

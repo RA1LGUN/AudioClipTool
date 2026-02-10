@@ -288,6 +288,24 @@ button {
   display: inline-block;
 }
 
+/* ── Time axis ─────────────────────────────────────────────────────────── */
+#time-axis {
+  display: block;
+  height: 28px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Drag selection ────────────────────────────────────────────────────── */
+.drag-selection {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: rgba(108, 92, 231, 0.2);
+  border: 2px dashed rgba(108, 92, 231, 0.7);
+  pointer-events: none;
+  z-index: 5;
+}
+
 /* ── Zoom info ─────────────────────────────────────────────────────────── */
 .zoom-info {
   font-size: 12px;
@@ -327,8 +345,9 @@ button {
         <div class="overlay" id="overlay">
           <div class="playhead" id="playhead" style="left:0"></div>
         </div>
+        <canvas id="time-axis"></canvas>
       </div>
-      <div class="zoom-info">Scroll to zoom horizontally. Click on spectrogram to seek.</div>
+      <div class="zoom-info">Scroll to zoom horizontally. Click to seek. Drag to select a region.</div>
       <div class="regions-list" id="regions-list"></div>
     </div>
   </div>
@@ -390,6 +409,8 @@ const spectrogramWrap = $('#spectrogram-wrap');
 const overlay = $('#overlay');
 const playhead = $('#playhead');
 const regionsList = $('#regions-list');
+const timeAxisCanvas = $('#time-axis');
+const timeAxisCtx = timeAxisCanvas.getContext('2d');
 
 // ── Phase 1: Download ────────────────────────────────────────────────────
 downloadBtn.addEventListener('click', doDownload);
@@ -610,7 +631,91 @@ function drawSpectrogram() {
   }
 
   ctx.putImageData(imageData, 0, 0);
+  drawTimeAxis();
   updateRegionPositions();
+}
+
+// ── Time Axis ─────────────────────────────────────────────────────────
+function formatTimeAxis(seconds, interval) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (interval < 1) {
+    return `${m}:${s.toFixed(1).padStart(4, '0')}`;
+  }
+  return `${m}:${Math.floor(s).toString().padStart(2, '0')}`;
+}
+
+function drawTimeAxis() {
+  if (!state.spectrogramData) return;
+
+  const width = canvas.width;
+  const height = 28;
+  const dpr = window.devicePixelRatio || 1;
+
+  timeAxisCanvas.width = width * dpr;
+  timeAxisCanvas.height = height * dpr;
+  timeAxisCanvas.style.width = width + 'px';
+  timeAxisCanvas.style.height = height + 'px';
+  timeAxisCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // Read theme colors from CSS variables
+  const cs = getComputedStyle(document.documentElement);
+  const textDim = cs.getPropertyValue('--text-dim').trim() || '#8888aa';
+  const borderColor = cs.getPropertyValue('--border').trim() || '#333355';
+  const bgColor = cs.getPropertyValue('--surface').trim() || '#1a1a24';
+
+  // Fill background
+  timeAxisCtx.fillStyle = bgColor;
+  timeAxisCtx.fillRect(0, 0, width, height);
+
+  // Choose nice interval based on pxPerSec
+  const niceIntervals = [0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
+  const minPxBetweenLabels = 80;
+  let majorInterval = niceIntervals[niceIntervals.length - 1];
+  for (const iv of niceIntervals) {
+    if (iv * state.pxPerSec >= minPxBetweenLabels) {
+      majorInterval = iv;
+      break;
+    }
+  }
+
+  // Minor ticks: subdivide major into 4 or 5 parts
+  let minorCount = 4;
+  if (majorInterval === 0.5 || majorInterval === 5 || majorInterval === 50) minorCount = 5;
+  const minorInterval = majorInterval / minorCount;
+
+  const duration = state.duration;
+  const majorTickH = 10;
+  const minorTickH = 5;
+
+  // Draw minor ticks
+  timeAxisCtx.strokeStyle = borderColor;
+  timeAxisCtx.lineWidth = 1;
+  timeAxisCtx.beginPath();
+  for (let t = 0; t <= duration + minorInterval / 2; t += minorInterval) {
+    const x = Math.round((t / duration) * width) + 0.5;
+    if (x > width) break;
+    timeAxisCtx.moveTo(x, 0);
+    timeAxisCtx.lineTo(x, minorTickH);
+  }
+  timeAxisCtx.stroke();
+
+  // Draw major ticks + labels
+  timeAxisCtx.strokeStyle = textDim;
+  timeAxisCtx.fillStyle = textDim;
+  timeAxisCtx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+  timeAxisCtx.textAlign = 'center';
+  timeAxisCtx.textBaseline = 'top';
+  timeAxisCtx.beginPath();
+  for (let t = 0; t <= duration + majorInterval / 2; t += majorInterval) {
+    const x = Math.round((t / duration) * width) + 0.5;
+    if (x > width) break;
+    timeAxisCtx.moveTo(x, 0);
+    timeAxisCtx.lineTo(x, majorTickH);
+    const label = formatTimeAxis(t, majorInterval);
+    timeAxisCtx.fillText(label, x, majorTickH + 2);
+  }
+  timeAxisCtx.stroke();
 }
 
 // ── Show Editor ──────────────────────────────────────────────────────────
@@ -704,21 +809,111 @@ function updatePlayhead() {
   updateTimeDisplay();
 }
 
-// ── Seek on Click ────────────────────────────────────────────────────────
-spectrogramWrap.addEventListener('click', (e) => {
-  if (e.target.closest('.region') || e.target.closest('.region-delete')) return;
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left + spectrogramWrap.scrollLeft;
-  const time = (x / canvas.width) * state.duration;
+// ── Seek on Click / Drag-to-Select ───────────────────────────────────────
+(function() {
+  let isDragging = false;
+  let dragStartX = 0;       // px relative to canvas (includes scroll)
+  let dragStartClientX = 0; // raw clientX for threshold check
+  let selectionDiv = null;
+  const DRAG_THRESHOLD = 5; // px
 
-  if (state.isPlaying) {
-    stopPlayback();
-    startPlayback(Math.max(0, Math.min(time, state.duration)));
-  } else {
-    state.playOffset = Math.max(0, Math.min(time, state.duration));
-    updatePlayhead();
+  spectrogramWrap.addEventListener('pointerdown', (e) => {
+    // Skip if clicking on a region or region-delete
+    if (e.target.closest('.region') || e.target.closest('.region-delete')) return;
+    // Only primary button
+    if (e.button !== 0) return;
+
+    const rect = canvas.getBoundingClientRect();
+    dragStartX = e.clientX - rect.left + spectrogramWrap.scrollLeft;
+    dragStartClientX = e.clientX;
+    isDragging = false;
+
+    // Create selection div but keep it hidden until threshold
+    selectionDiv = document.createElement('div');
+    selectionDiv.className = 'drag-selection';
+    selectionDiv.style.left = dragStartX + 'px';
+    selectionDiv.style.width = '0px';
+    selectionDiv.style.display = 'none';
+    overlay.appendChild(selectionDiv);
+
+    document.addEventListener('pointermove', onDragMove);
+    document.addEventListener('pointerup', onDragUp);
+  });
+
+  function onDragMove(e) {
+    const dx = e.clientX - dragStartClientX;
+    if (!isDragging && Math.abs(dx) < DRAG_THRESHOLD) return;
+    isDragging = true;
+    selectionDiv.style.display = 'block';
+
+    const rect = canvas.getBoundingClientRect();
+    const currentX = e.clientX - rect.left + spectrogramWrap.scrollLeft;
+    const left = Math.max(0, Math.min(dragStartX, currentX));
+    const right = Math.min(canvas.width, Math.max(dragStartX, currentX));
+    selectionDiv.style.left = left + 'px';
+    selectionDiv.style.width = (right - left) + 'px';
+
+    // Auto-scroll when near edges
+    const wrapRect = spectrogramWrap.getBoundingClientRect();
+    const edgeZone = 40;
+    if (e.clientX < wrapRect.left + edgeZone) {
+      spectrogramWrap.scrollLeft -= 8;
+    } else if (e.clientX > wrapRect.right - edgeZone) {
+      spectrogramWrap.scrollLeft += 8;
+    }
   }
-});
+
+  function onDragUp(e) {
+    document.removeEventListener('pointermove', onDragMove);
+    document.removeEventListener('pointerup', onDragUp);
+
+    // Clean up selection div
+    if (selectionDiv) {
+      selectionDiv.remove();
+      selectionDiv = null;
+    }
+
+    if (isDragging) {
+      // Create region from drag bounds
+      const rect = canvas.getBoundingClientRect();
+      const endX = e.clientX - rect.left + spectrogramWrap.scrollLeft;
+      const x1 = Math.max(0, Math.min(dragStartX, endX));
+      const x2 = Math.min(canvas.width, Math.max(dragStartX, endX));
+      const t1 = (x1 / canvas.width) * state.duration;
+      const t2 = (x2 / canvas.width) * state.duration;
+
+      // Minimum 50ms region
+      if (t2 - t1 >= 0.05) {
+        const colorIdx = state.regions.length % REGION_COLORS.length;
+        const region = {
+          id: state.nextRegionId++,
+          start: t1,
+          end: t2,
+          color: REGION_COLORS[colorIdx],
+          borderColor: REGION_BORDER_COLORS[colorIdx],
+        };
+        state.regions.push(region);
+        createRegionElement(region);
+        updateRegionsList();
+      }
+    } else {
+      // Click → seek
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left + spectrogramWrap.scrollLeft;
+      const time = (x / canvas.width) * state.duration;
+
+      if (state.isPlaying) {
+        stopPlayback();
+        startPlayback(Math.max(0, Math.min(time, state.duration)));
+      } else {
+        state.playOffset = Math.max(0, Math.min(time, state.duration));
+        updatePlayhead();
+      }
+    }
+
+    isDragging = false;
+  }
+})();
 
 // ── Zoom ─────────────────────────────────────────────────────────────────
 spectrogramWrap.addEventListener('wheel', (e) => {

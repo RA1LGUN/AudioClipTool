@@ -7,6 +7,9 @@ import io
 from pathlib import Path
 
 import boto3
+from dotenv import load_dotenv
+
+load_dotenv()
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -221,7 +224,7 @@ async def clip_audio(req: ClipRequest):
 
 @app.post("/api/clip-multi")
 async def clip_multi(req: ClipMultiRequest):
-    cleanup_old_files()
+    # cleanup_old_files()
 
     if not req.tracks:
         raise HTTPException(status_code=400, detail="No tracks specified")

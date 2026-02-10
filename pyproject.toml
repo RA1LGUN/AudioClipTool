@@ -11,6 +11,7 @@ dependencies = [
     "python-multipart>=0.0.18",
     "audioop-lts>=0.2.1; python_version>='3.13'",
     "boto3>=1.35.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.scripts]

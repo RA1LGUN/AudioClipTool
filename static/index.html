@@ -479,6 +479,8 @@ async function doDownload() {
     downloadStatus.textContent = 'Ready!';
     downloadStatus.className = 'status';
     showEditor();
+    computeWaveformPeaks();
+    drawTimeline();
   } catch (e) {
     downloadStatus.textContent = e.message;
     downloadStatus.className = 'status error';
@@ -600,8 +602,6 @@ function computeSpectrogram() {
   state.magMax = maxVal;
 
   drawSpectrogram();
-  computeWaveformPeaks();
-  drawTimeline();
 }
 
 // ── Viridis-like Colormap ────────────────────────────────────────────────
@@ -949,8 +949,8 @@ function updatePlayhead() {
     // Only primary button
     if (e.button !== 0) return;
 
-    const rect = canvas.getBoundingClientRect();
-    dragStartX = e.clientX - rect.left + spectrogramWrap.scrollLeft;
+    const wrapRect = spectrogramWrap.getBoundingClientRect();
+    dragStartX = e.clientX - wrapRect.left + spectrogramWrap.scrollLeft;
     dragStartClientX = e.clientX;
     isDragging = false;
 
@@ -972,8 +972,8 @@ function updatePlayhead() {
     isDragging = true;
     selectionDiv.style.display = 'block';
 
-    const rect = canvas.getBoundingClientRect();
-    const currentX = e.clientX - rect.left + spectrogramWrap.scrollLeft;
+    const wrapRect = spectrogramWrap.getBoundingClientRect();
+    const currentX = e.clientX - wrapRect.left + spectrogramWrap.scrollLeft;
     const left = Math.max(0, Math.min(dragStartX, currentX));
     const right = Math.min(canvas.width, Math.max(dragStartX, currentX));
     selectionDiv.style.left = left + 'px';
@@ -1001,8 +1001,8 @@ function updatePlayhead() {
 
     if (isDragging) {
       // Create region from drag bounds
-      const rect = canvas.getBoundingClientRect();
-      const endX = e.clientX - rect.left + spectrogramWrap.scrollLeft;
+      const wrapRect = spectrogramWrap.getBoundingClientRect();
+      const endX = e.clientX - wrapRect.left + spectrogramWrap.scrollLeft;
       const x1 = Math.max(0, Math.min(dragStartX, endX));
       const x2 = Math.min(canvas.width, Math.max(dragStartX, endX));
       const t1 = (x1 / canvas.width) * state.duration;
@@ -1024,8 +1024,8 @@ function updatePlayhead() {
       }
     } else {
       // Click → seek
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left + spectrogramWrap.scrollLeft;
+      const wrapRect = spectrogramWrap.getBoundingClientRect();
+      const x = e.clientX - wrapRect.left + spectrogramWrap.scrollLeft;
       const time = (x / canvas.width) * state.duration;
 
       if (state.isPlaying) {

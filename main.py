@@ -39,6 +39,16 @@ class ClipRequest(BaseModel):
     regions: list[Region]
 
 
+class TrackClipRequest(BaseModel):
+    file_id: str
+    track_name: str
+    regions: list[Region]
+
+
+class ClipMultiRequest(BaseModel):
+    tracks: list[TrackClipRequest]
+
+
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
 def cleanup_old_files() -> None:
@@ -142,6 +152,44 @@ async def clip_audio(req: ClipRequest):
         buf,
         media_type="application/zip",
         headers={"Content-Disposition": "attachment; filename=clips.zip"},
+    )
+
+
+@app.post("/api/clip-multi")
+async def clip_multi(req: ClipMultiRequest):
+    cleanup_old_files()
+
+    if not req.tracks:
+        raise HTTPException(status_code=400, detail="No tracks specified")
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for track in req.tracks:
+            path = get_audio_path(track.file_id)
+            if not track.regions:
+                continue
+            audio = AudioSegment.from_wav(str(path))
+            safe_name = "".join(
+                c if c.isalnum() or c in (" ", "-", "_") else "_"
+                for c in track.track_name
+            ).strip() or track.file_id
+            for i, region in enumerate(track.regions, start=1):
+                start_ms = int(region.start * 1000)
+                end_ms = int(region.end * 1000)
+                clip = audio[start_ms:end_ms]
+                clip_buf = io.BytesIO()
+                clip.export(clip_buf, format="wav")
+                clip_buf.seek(0)
+                zf.writestr(
+                    f"{safe_name}/clip_{i:03d}_{region.start:.2f}s-{region.end:.2f}s.wav",
+                    clip_buf.read(),
+                )
+
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=clips_multi.zip"},
     )
 
 

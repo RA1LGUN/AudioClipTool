@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MMAE - Music/Media Audio Editor</title>
 <style>
-/* ── Reset & Base ──────────────────────────────────────────────────────── */
+/* -- Reset & Base -------------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -28,9 +28,10 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  padding-bottom: 80px;
 }
 
-/* ── Layout ────────────────────────────────────────────────────────────── */
+/* -- Layout -------------------------------------------------------------- */
 .app {
   max-width: 1200px;
   margin: 0 auto;
@@ -62,7 +63,7 @@ header p {
   margin-bottom: 16px;
 }
 
-/* ── Buttons ───────────────────────────────────────────────────────────── */
+/* -- Buttons ------------------------------------------------------------- */
 button {
   cursor: pointer;
   border: none;
@@ -95,7 +96,7 @@ button {
 }
 .btn-secondary:hover { background: var(--border); }
 
-/* ── Phase 1: URL Input ────────────────────────────────────────────────── */
+/* -- URL Input & Queue --------------------------------------------------- */
 .url-form {
   display: flex;
   gap: 12px;
@@ -116,7 +117,70 @@ button {
   border-color: var(--accent);
 }
 
-/* ── Status / Error ────────────────────────────────────────────────────── */
+.url-queue {
+  margin-top: 12px;
+}
+
+.url-queue-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.url-queue-item .url-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.url-queue-item .queue-status {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.url-queue-item .queue-status.downloading {
+  color: var(--accent);
+}
+
+.url-queue-item .queue-status.done {
+  color: var(--success);
+}
+
+.url-queue-item .queue-status.error {
+  color: var(--danger);
+}
+
+.url-queue-item .queue-remove {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.url-queue-item .queue-remove:hover {
+  color: var(--danger);
+}
+
+.queue-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+}
+
+/* -- Status / Error ------------------------------------------------------ */
 .status {
   margin-top: 12px;
   font-size: 13px;
@@ -140,8 +204,23 @@ button {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Phase 2: Editor ───────────────────────────────────────────────────── */
-#editor { display: none; }
+/* -- Track Panels -------------------------------------------------------- */
+#tracks-container {
+  margin-top: 16px;
+}
+
+.track-card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 16px;
+  transition: border-color 0.15s;
+}
+
+.track-card.active {
+  border-color: var(--accent);
+}
 
 .toolbar {
   display: flex;
@@ -168,7 +247,7 @@ button {
   min-width: 120px;
 }
 
-/* ── Spectrogram Container ─────────────────────────────────────────────── */
+/* -- Spectrogram Container ----------------------------------------------- */
 .spectrogram-wrap {
   position: relative;
   overflow-x: auto;
@@ -182,7 +261,7 @@ button {
   display: block;
 }
 
-/* ── Overlay layer for regions + playhead ──────────────────────────────── */
+/* -- Overlay layer for regions + playhead -------------------------------- */
 .overlay {
   position: absolute;
   top: 0;
@@ -202,7 +281,7 @@ button {
   transition: left 0.03s linear;
 }
 
-/* ── Regions ───────────────────────────────────────────────────────────── */
+/* -- Regions ------------------------------------------------------------- */
 .region {
   position: absolute;
   top: 0;
@@ -261,7 +340,7 @@ button {
   padding: 0;
 }
 
-/* ── Regions List ──────────────────────────────────────────────────────── */
+/* -- Regions List -------------------------------------------------------- */
 .regions-list {
   margin-top: 12px;
   display: flex;
@@ -288,7 +367,7 @@ button {
   display: inline-block;
 }
 
-/* ── Timeline Bar ─────────────────────────────────────────────────────── */
+/* -- Timeline Bar -------------------------------------------------------- */
 .timeline-bar {
   position: relative;
   height: 48px;
@@ -322,7 +401,7 @@ button {
   cursor: grabbing;
 }
 
-/* ── Drag selection ────────────────────────────────────────────────────── */
+/* -- Drag selection ------------------------------------------------------ */
 .drag-selection {
   position: absolute;
   top: 0;
@@ -333,11 +412,30 @@ button {
   z-index: 5;
 }
 
-/* ── Zoom info ─────────────────────────────────────────────────────────── */
+/* -- Zoom info ----------------------------------------------------------- */
 .zoom-info {
   font-size: 12px;
   color: var(--text-dim);
   margin-top: 6px;
+}
+
+/* -- Global Controls Bar ------------------------------------------------- */
+#global-controls {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 14px 24px;
+  display: none;
+  justify-content: center;
+  gap: 16px;
+  z-index: 100;
+}
+
+#global-controls.visible {
+  display: flex;
 }
 </style>
 </head>
@@ -348,66 +446,29 @@ button {
     <p>Music / Media Audio Editor</p>
   </header>
 
-  <!-- Phase 1: URL Input -->
+  <!-- URL Input & Queue -->
   <div class="card" id="download-card">
     <div class="url-form">
-      <input type="text" id="url-input" placeholder="Paste a YouTube URL..." autocomplete="off">
-      <button class="btn-primary" id="download-btn">Download</button>
+      <input type="text" id="url-input" placeholder="Paste YouTube URL(s)..." autocomplete="off">
+      <button class="btn-secondary" id="add-btn">Add</button>
+      <button class="btn-primary" id="download-all-btn" disabled>Download All</button>
     </div>
+    <div class="url-queue" id="url-queue"></div>
     <div class="status" id="download-status"></div>
   </div>
 
-  <!-- Phase 2: Editor -->
-  <div id="editor">
-    <div class="card">
-      <div class="toolbar">
-        <span class="title" id="audio-title"></span>
-        <span class="time-display" id="time-display">0:00.0 / 0:00.0</span>
-        <button class="btn-secondary" id="play-btn">Play</button>
-        <button class="btn-secondary" id="add-region-btn">+ Add Region</button>
-        <button class="btn-primary" id="clip-btn">Clip All</button>
-      </div>
-      <div class="spectrogram-wrap" id="spectrogram-wrap">
-        <canvas id="spectrogram"></canvas>
-        <div class="overlay" id="overlay">
-          <div class="playhead" id="playhead" style="left:0"></div>
-        </div>
-      </div>
-      <div class="timeline-bar" id="timeline-bar">
-        <canvas id="timeline-canvas"></canvas>
-        <div class="timeline-viewport" id="timeline-viewport"></div>
-      </div>
-      <div class="zoom-info">Scroll to zoom horizontally. Click to seek. Drag to select a region.</div>
-      <div class="regions-list" id="regions-list"></div>
-    </div>
-  </div>
+  <!-- Track Panels -->
+  <div id="tracks-container"></div>
+</div>
+
+<!-- Global Controls -->
+<div id="global-controls">
+  <button class="btn-primary" id="clip-all-btn">Clip All Tracks</button>
+  <button class="btn-secondary" id="stop-all-btn">Stop All</button>
 </div>
 
 <script>
-// ── State ────────────────────────────────────────────────────────────────
-const state = {
-  fileId: null,
-  filename: '',
-  duration: 0,
-  audioBuffer: null,
-  audioContext: null,
-  sourceNode: null,
-  isPlaying: false,
-  playStartTime: 0,
-  playOffset: 0,
-  pxPerSec: 100,       // horizontal zoom
-  minPxPerSec: 20,
-  maxPxPerSec: 1000,
-  regions: [],          // { id, start, end, color }
-  nextRegionId: 1,
-  spectrogramData: null,  // Float32Array[][] magnitudes
-  fftSize: 2048,
-  hopSize: 512,
-  animFrame: null,
-  monoData: null,
-  waveformPeaks: null,
-};
-
+// == Constants ================================================================
 const REGION_COLORS = [
   'rgba(108,92,231,0.35)',
   'rgba(0,184,148,0.35)',
@@ -424,85 +485,210 @@ const REGION_BORDER_COLORS = [
   '#74b9ff', '#e84393', '#55efc4', '#ff7675',
 ];
 
-// ── DOM refs ─────────────────────────────────────────────────────────────
-const $ = (sel) => document.querySelector(sel);
-const urlInput = $('#url-input');
-const downloadBtn = $('#download-btn');
-const downloadStatus = $('#download-status');
-const editorEl = $('#editor');
-const audioTitle = $('#audio-title');
-const timeDisplay = $('#time-display');
-const playBtn = $('#play-btn');
-const addRegionBtn = $('#add-region-btn');
-const clipBtn = $('#clip-btn');
-const canvas = $('#spectrogram');
-const ctx = canvas.getContext('2d');
-const spectrogramWrap = $('#spectrogram-wrap');
-const overlay = $('#overlay');
-const playhead = $('#playhead');
-const regionsList = $('#regions-list');
-const timelineBar = $('#timeline-bar');
-const timelineCanvas = $('#timeline-canvas');
-const timelineCtx = timelineCanvas.getContext('2d');
-const timelineViewport = $('#timeline-viewport');
+// == Viridis Colormap LUT =====================================================
+function viridis(t) {
+  t = Math.max(0, Math.min(1, t));
+  const r = Math.round(255 * Math.max(0, Math.min(1, -0.35 + 2.5 * t - 1.7 * t * t)));
+  const g = Math.round(255 * Math.max(0, Math.min(1, -0.05 + 1.5 * t - 0.7 * t * t)));
+  const b = Math.round(255 * Math.max(0, Math.min(1, 0.5 + 0.8 * t - 1.8 * t * t + 0.9 * t * t * t)));
+  return [r, g, b];
+}
 
-// ── Phase 1: Download ────────────────────────────────────────────────────
-downloadBtn.addEventListener('click', doDownload);
-urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doDownload(); });
+const colormapLUT = new Uint8Array(256 * 3);
+for (let i = 0; i < 256; i++) {
+  const [r, g, b] = viridis(i / 255);
+  colormapLUT[i * 3] = r;
+  colormapLUT[i * 3 + 1] = g;
+  colormapLUT[i * 3 + 2] = b;
+}
 
-async function doDownload() {
-  const url = urlInput.value.trim();
-  if (!url) return;
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = (sec % 60).toFixed(1);
+  return `${m}:${s.padStart(4, '0')}`;
+}
 
-  downloadBtn.disabled = true;
-  downloadStatus.className = 'status';
-  downloadStatus.innerHTML = '<span class="spinner"></span> Downloading audio...';
+// == Shared State =============================================================
+const sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const tracks = [];
+let activeTrackId = null;
+let nextTrackId = 1;
 
-  try {
-    const resp = await fetch('/api/download', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
-    });
-    if (!resp.ok) {
-      const err = await resp.json();
-      throw new Error(err.detail || 'Download failed');
-    }
-    const data = await resp.json();
-    state.fileId = data.file_id;
-    state.filename = data.filename;
-    state.duration = data.duration;
+// == URL Queue ================================================================
+const urlQueue = [];  // { id, url, status: 'pending'|'downloading'|'loading'|'done'|'error', error? }
+let nextQueueId = 1;
+let isDownloading = false;
 
-    downloadStatus.innerHTML = '<span class="spinner"></span> Loading audio for visualization...';
-    await loadAudio(data.file_id);
+const urlInput = document.getElementById('url-input');
+const addBtn = document.getElementById('add-btn');
+const downloadAllBtn = document.getElementById('download-all-btn');
+const urlQueueEl = document.getElementById('url-queue');
+const downloadStatus = document.getElementById('download-status');
+const tracksContainer = document.getElementById('tracks-container');
+const globalControls = document.getElementById('global-controls');
+const clipAllBtn = document.getElementById('clip-all-btn');
+const stopAllBtn = document.getElementById('stop-all-btn');
 
-    downloadStatus.textContent = 'Ready!';
-    downloadStatus.className = 'status';
-    showEditor();
-    computeWaveformPeaks();
-    drawTimeline();
-  } catch (e) {
-    downloadStatus.textContent = e.message;
-    downloadStatus.className = 'status error';
-  } finally {
-    downloadBtn.disabled = false;
+addBtn.addEventListener('click', addUrls);
+urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addUrls(); });
+downloadAllBtn.addEventListener('click', downloadAll);
+
+function addUrls() {
+  const raw = urlInput.value.trim();
+  if (!raw) return;
+  const urls = raw.split(/\n+/).map(u => u.trim()).filter(Boolean);
+  for (const url of urls) {
+    urlQueue.push({ id: nextQueueId++, url, status: 'pending' });
+  }
+  urlInput.value = '';
+  renderQueue();
+}
+
+function removeQueueItem(id) {
+  const idx = urlQueue.findIndex(q => q.id === id);
+  if (idx !== -1 && urlQueue[idx].status === 'pending') {
+    urlQueue.splice(idx, 1);
+    renderQueue();
   }
 }
 
-// ── Load & Decode Audio ──────────────────────────────────────────────────
-async function loadAudio(fileId) {
-  state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  const resp = await fetch(`/api/audio/${fileId}`);
-  const arrayBuf = await resp.arrayBuffer();
-  state.audioBuffer = await state.audioContext.decodeAudioData(arrayBuf);
-  state.duration = state.audioBuffer.duration;
-  computeSpectrogram();
+function renderQueue() {
+  urlQueueEl.innerHTML = '';
+  for (const item of urlQueue) {
+    const div = document.createElement('div');
+    div.className = 'url-queue-item';
+
+    const urlSpan = document.createElement('span');
+    urlSpan.className = 'url-text';
+    urlSpan.textContent = item.url;
+    div.appendChild(urlSpan);
+
+    const statusSpan = document.createElement('span');
+    statusSpan.className = 'queue-status';
+    if (item.status === 'pending') {
+      statusSpan.textContent = 'pending';
+    } else if (item.status === 'downloading') {
+      statusSpan.className += ' downloading';
+      statusSpan.innerHTML = '<span class="spinner"></span>downloading';
+    } else if (item.status === 'loading') {
+      statusSpan.className += ' downloading';
+      statusSpan.innerHTML = '<span class="spinner"></span>loading';
+    } else if (item.status === 'done') {
+      statusSpan.className += ' done';
+      statusSpan.textContent = 'done';
+    } else if (item.status === 'error') {
+      statusSpan.className += ' error';
+      statusSpan.textContent = item.error || 'error';
+    }
+    div.appendChild(statusSpan);
+
+    if (item.status === 'pending') {
+      const removeBtn = document.createElement('span');
+      removeBtn.className = 'queue-remove';
+      removeBtn.textContent = '\u00d7';
+      removeBtn.addEventListener('click', () => removeQueueItem(item.id));
+      div.appendChild(removeBtn);
+    }
+
+    urlQueueEl.appendChild(div);
+  }
+
+  downloadAllBtn.disabled = urlQueue.filter(q => q.status === 'pending').length === 0 || isDownloading;
 }
 
-// ── STFT / Spectrogram ──────────────────────────────────────────────────
-function computeSpectrogram() {
-  const buf = state.audioBuffer;
-  // Mix to mono
+async function downloadAll() {
+  if (isDownloading) return;
+  isDownloading = true;
+  downloadAllBtn.disabled = true;
+  downloadStatus.textContent = '';
+
+  const pending = urlQueue.filter(q => q.status === 'pending');
+  for (const item of pending) {
+    item.status = 'downloading';
+    renderQueue();
+
+    try {
+      const resp = await fetch('/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: item.url }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.detail || 'Download failed');
+      }
+      const data = await resp.json();
+
+      item.status = 'loading';
+      renderQueue();
+
+      // Create track
+      const track = createTrackState(data.file_id, data.filename, data.duration);
+      tracks.push(track);
+      createTrackPanel(track);
+      await loadAudio(track);
+      computeWaveformPeaks(track);
+      drawTimeline(track);
+      updateGlobalControls();
+
+      item.status = 'done';
+      renderQueue();
+    } catch (e) {
+      item.status = 'error';
+      item.error = e.message;
+      renderQueue();
+    }
+  }
+
+  isDownloading = false;
+  downloadAllBtn.disabled = urlQueue.filter(q => q.status === 'pending').length === 0;
+  downloadStatus.textContent = 'All downloads processed.';
+}
+
+// == Track State Factory ======================================================
+function createTrackState(fileId, filename, duration) {
+  return {
+    id: nextTrackId++,
+    fileId,
+    filename,
+    duration,
+    audioBuffer: null,
+    sourceNode: null,
+    isPlaying: false,
+    playStartTime: 0,
+    playOffset: 0,
+    pxPerSec: 100,
+    minPxPerSec: 20,
+    maxPxPerSec: 1000,
+    regions: [],
+    nextRegionId: 1,
+    spectrogramData: null,
+    numFrames: 0,
+    numBins: 0,
+    fftSize: 2048,
+    hopSize: 512,
+    animFrame: null,
+    monoData: null,
+    waveformPeaks: null,
+    magMin: 0,
+    magMax: 0,
+    dom: {},  // filled by createTrackPanel
+  };
+}
+
+// == Load & Decode Audio ======================================================
+async function loadAudio(track) {
+  if (sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
+  const resp = await fetch(`/api/audio/${track.fileId}`);
+  const arrayBuf = await resp.arrayBuffer();
+  track.audioBuffer = await sharedAudioCtx.decodeAudioData(arrayBuf);
+  track.duration = track.audioBuffer.duration;
+  computeSpectrogram(track);
+}
+
+// == Spectrogram Computation ==================================================
+function computeSpectrogram(track) {
+  const buf = track.audioBuffer;
   const numChannels = buf.numberOfChannels;
   const length = buf.length;
   const mono = new Float32Array(length);
@@ -513,23 +699,20 @@ function computeSpectrogram() {
     }
   }
 
-  const fftSize = state.fftSize;
-  const hopSize = state.hopSize;
+  const fftSize = track.fftSize;
+  const hopSize = track.hopSize;
   const numFrames = Math.floor((length - fftSize) / hopSize) + 1;
   const numBins = fftSize / 2;
 
-  // Hanning window
-  const window = new Float32Array(fftSize);
+  const win = new Float32Array(fftSize);
   for (let i = 0; i < fftSize; i++) {
-    window[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (fftSize - 1)));
+    win[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (fftSize - 1)));
   }
 
-  // Pre-compute bit-reversal table
   const logN = Math.log2(fftSize);
   const bitRev = new Uint32Array(fftSize);
   for (let i = 0; i < fftSize; i++) {
-    let rev = 0;
-    let val = i;
+    let rev = 0, val = i;
     for (let j = 0; j < logN; j++) {
       rev = (rev << 1) | (val & 1);
       val >>= 1;
@@ -537,7 +720,6 @@ function computeSpectrogram() {
     bitRev[i] = rev;
   }
 
-  // Pre-compute twiddle factors
   const twiddleRe = new Float64Array(fftSize / 2);
   const twiddleIm = new Float64Array(fftSize / 2);
   for (let i = 0; i < fftSize / 2; i++) {
@@ -546,23 +728,17 @@ function computeSpectrogram() {
     twiddleIm[i] = Math.sin(angle);
   }
 
-  // Allocate magnitude array as flat Float32Array for performance
   const magnitudes = new Float32Array(numFrames * numBins);
-
-  // Working arrays for FFT
   const re = new Float64Array(fftSize);
   const im = new Float64Array(fftSize);
 
   for (let frame = 0; frame < numFrames; frame++) {
     const offset = frame * hopSize;
-
-    // Apply window + bit-reversal permutation
     for (let i = 0; i < fftSize; i++) {
-      re[bitRev[i]] = mono[offset + i] * window[i];
+      re[bitRev[i]] = mono[offset + i] * win[i];
     }
     im.fill(0);
 
-    // Cooley-Tukey FFT
     for (let size = 2; size <= fftSize; size *= 2) {
       const halfSize = size / 2;
       const step = fftSize / size;
@@ -579,7 +755,6 @@ function computeSpectrogram() {
       }
     }
 
-    // Compute magnitudes (dB scale)
     const baseIdx = frame * numBins;
     for (let i = 0; i < numBins; i++) {
       const mag = Math.sqrt(re[i] * re[i] + im[i] * im[i]);
@@ -587,78 +762,48 @@ function computeSpectrogram() {
     }
   }
 
-  state.spectrogramData = magnitudes;
-  state.numFrames = numFrames;
-  state.numBins = numBins;
-  state.monoData = mono;
+  track.spectrogramData = magnitudes;
+  track.numFrames = numFrames;
+  track.numBins = numBins;
+  track.monoData = mono;
 
-  // Find global min/max for normalization
   let minVal = Infinity, maxVal = -Infinity;
   for (let i = 0; i < magnitudes.length; i++) {
     if (magnitudes[i] < minVal) minVal = magnitudes[i];
     if (magnitudes[i] > maxVal) maxVal = magnitudes[i];
   }
-  state.magMin = minVal;
-  state.magMax = maxVal;
+  track.magMin = minVal;
+  track.magMax = maxVal;
 
-  drawSpectrogram();
+  drawSpectrogram(track);
 }
 
-// ── Viridis-like Colormap ────────────────────────────────────────────────
-function viridis(t) {
-  // Simplified viridis approximation (0..1) → [r, g, b] (0..255)
-  t = Math.max(0, Math.min(1, t));
-  const r = Math.round(255 * Math.max(0, Math.min(1, -0.35 + 2.5 * t - 1.7 * t * t)));
-  const g = Math.round(255 * Math.max(0, Math.min(1, -0.05 + 1.5 * t - 0.7 * t * t)));
-  const b = Math.round(255 * Math.max(0, Math.min(1, 0.5 + 0.8 * t - 1.8 * t * t + 0.9 * t * t * t)));
-  return [r, g, b];
-}
-
-// Build lookup table for colormap (256 entries)
-const colormapLUT = new Uint8Array(256 * 3);
-for (let i = 0; i < 256; i++) {
-  const [r, g, b] = viridis(i / 255);
-  colormapLUT[i * 3] = r;
-  colormapLUT[i * 3 + 1] = g;
-  colormapLUT[i * 3 + 2] = b;
-}
-
-// ── Draw Spectrogram ─────────────────────────────────────────────────────
-function drawSpectrogram() {
-  if (!state.spectrogramData) return;
-
-  const numFrames = state.numFrames;
-  const numBins = state.numBins;
-  const magnitudes = state.spectrogramData;
-  const minVal = state.magMin;
-  const range = state.magMax - minVal || 1;
-
-  // Canvas size based on zoom level
-  const timePerFrame = state.hopSize / state.audioBuffer.sampleRate;
-  const totalWidth = Math.ceil(numFrames * state.pxPerSec * timePerFrame);
+// == Draw Spectrogram =========================================================
+function drawSpectrogram(track) {
+  if (!track.spectrogramData) return;
+  const { numFrames, numBins, spectrogramData: magnitudes, magMin: minVal, magMax, hopSize, audioBuffer } = track;
+  const d = track.dom;
+  const range = magMax - minVal || 1;
+  const timePerFrame = hopSize / audioBuffer.sampleRate;
+  const totalWidth = Math.ceil(numFrames * track.pxPerSec * timePerFrame);
   const height = 300;
 
-  canvas.width = totalWidth;
-  canvas.height = height;
+  d.canvas.width = totalWidth;
+  d.canvas.height = height;
+  d.overlay.style.width = totalWidth + 'px';
+  d.overlay.style.height = height + 'px';
 
-  overlay.style.width = totalWidth + 'px';
-  overlay.style.height = height + 'px';
-
+  const ctx = d.canvas.getContext('2d');
   const imageData = ctx.createImageData(totalWidth, height);
   const data = imageData.data;
 
-  // For each pixel column, find the nearest STFT frame
-  // For each pixel row, find the nearest frequency bin
   for (let px = 0; px < totalWidth; px++) {
-    const frame = Math.min(numFrames - 1, Math.round(px / (state.pxPerSec * timePerFrame)));
+    const frame = Math.min(numFrames - 1, Math.round(px / (track.pxPerSec * timePerFrame)));
     const frameBase = frame * numBins;
-
     for (let py = 0; py < height; py++) {
-      // py=0 is top = high frequency, py=height-1 is bottom = low frequency
       const bin = Math.min(numBins - 1, Math.round((1 - py / height) * numBins));
       const val = (magnitudes[frameBase + bin] - minVal) / range;
       const lutIdx = Math.round(val * 255) * 3;
-
       const idx = (py * totalWidth + px) * 4;
       data[idx] = colormapLUT[lutIdx];
       data[idx + 1] = colormapLUT[lutIdx + 1];
@@ -668,15 +813,15 @@ function drawSpectrogram() {
   }
 
   ctx.putImageData(imageData, 0, 0);
-  updateRegionPositions();
-  updateTimelineViewport();
+  updateRegionPositions(track);
+  updateTimelineViewport(track);
 }
 
-// ── Waveform Peaks ────────────────────────────────────────────────────
-function computeWaveformPeaks() {
-  const mono = state.monoData;
+// == Waveform Peaks ===========================================================
+function computeWaveformPeaks(track) {
+  const mono = track.monoData;
   if (!mono) return;
-  const width = timelineBar.clientWidth || 1150;
+  const width = track.dom.timelineBar.clientWidth || 1150;
   const samplesPerPx = mono.length / width;
   const peaks = new Float32Array(width);
   for (let i = 0; i < width; i++) {
@@ -689,20 +834,21 @@ function computeWaveformPeaks() {
     }
     peaks[i] = max;
   }
-  state.waveformPeaks = peaks;
+  track.waveformPeaks = peaks;
 }
 
-// ── Timeline Drawing ──────────────────────────────────────────────────
-function drawTimeline() {
-  if (!state.waveformPeaks) return;
-
-  const barWidth = timelineBar.clientWidth;
-  const barHeight = timelineBar.clientHeight;
+// == Timeline Drawing =========================================================
+function drawTimeline(track) {
+  if (!track.waveformPeaks) return;
+  const d = track.dom;
+  const barWidth = d.timelineBar.clientWidth;
+  const barHeight = d.timelineBar.clientHeight;
   const dpr = window.devicePixelRatio || 1;
+  const tCtx = d.timelineCanvas.getContext('2d');
 
-  timelineCanvas.width = barWidth * dpr;
-  timelineCanvas.height = barHeight * dpr;
-  timelineCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  d.timelineCanvas.width = barWidth * dpr;
+  d.timelineCanvas.height = barHeight * dpr;
+  tCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   const cs = getComputedStyle(document.documentElement);
   const bgColor = cs.getPropertyValue('--surface').trim() || '#1a1a24';
@@ -710,28 +856,25 @@ function drawTimeline() {
   const borderColor = cs.getPropertyValue('--border').trim() || '#333355';
   const accent = cs.getPropertyValue('--accent').trim() || '#6c5ce7';
 
-  // Background
-  timelineCtx.fillStyle = bgColor;
-  timelineCtx.fillRect(0, 0, barWidth, barHeight);
+  tCtx.fillStyle = bgColor;
+  tCtx.fillRect(0, 0, barWidth, barHeight);
 
-  // Draw waveform
-  const peaks = state.waveformPeaks;
-  const halfH = (barHeight - 14) / 2; // leave room for ticks at bottom
+  const peaks = track.waveformPeaks;
+  const halfH = (barHeight - 14) / 2;
   const centerY = halfH;
-  timelineCtx.strokeStyle = accent;
-  timelineCtx.globalAlpha = 0.5;
-  timelineCtx.lineWidth = 1;
-  timelineCtx.beginPath();
+  tCtx.strokeStyle = accent;
+  tCtx.globalAlpha = 0.5;
+  tCtx.lineWidth = 1;
+  tCtx.beginPath();
   for (let i = 0; i < peaks.length && i < barWidth; i++) {
     const h = peaks[i] * halfH;
-    timelineCtx.moveTo(i + 0.5, centerY - h);
-    timelineCtx.lineTo(i + 0.5, centerY + h);
+    tCtx.moveTo(i + 0.5, centerY - h);
+    tCtx.lineTo(i + 0.5, centerY + h);
   }
-  timelineCtx.stroke();
-  timelineCtx.globalAlpha = 1.0;
+  tCtx.stroke();
+  tCtx.globalAlpha = 1.0;
 
-  // Draw time ticks along the bottom
-  const duration = state.duration;
+  const duration = track.duration;
   if (duration <= 0) return;
 
   const tickAreaTop = barHeight - 14;
@@ -746,342 +889,164 @@ function drawTimeline() {
     }
   }
 
-  // Minor ticks
   let minorCount = 4;
   if (majorInterval === 0.5 || majorInterval === 5 || majorInterval === 50) minorCount = 5;
   const minorInterval = majorInterval / minorCount;
 
-  timelineCtx.strokeStyle = borderColor;
-  timelineCtx.lineWidth = 1;
-  timelineCtx.beginPath();
+  tCtx.strokeStyle = borderColor;
+  tCtx.lineWidth = 1;
+  tCtx.beginPath();
   for (let t = 0; t <= duration + minorInterval / 2; t += minorInterval) {
     const x = Math.round((t / duration) * barWidth) + 0.5;
     if (x > barWidth) break;
-    timelineCtx.moveTo(x, tickAreaTop);
-    timelineCtx.lineTo(x, tickAreaTop + 4);
+    tCtx.moveTo(x, tickAreaTop);
+    tCtx.lineTo(x, tickAreaTop + 4);
   }
-  timelineCtx.stroke();
+  tCtx.stroke();
 
-  // Major ticks + labels
-  timelineCtx.strokeStyle = textDim;
-  timelineCtx.fillStyle = textDim;
-  timelineCtx.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-  timelineCtx.textAlign = 'center';
-  timelineCtx.textBaseline = 'top';
-  timelineCtx.beginPath();
+  tCtx.strokeStyle = textDim;
+  tCtx.fillStyle = textDim;
+  tCtx.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+  tCtx.textAlign = 'center';
+  tCtx.textBaseline = 'top';
+  tCtx.beginPath();
   for (let t = 0; t <= duration + majorInterval / 2; t += majorInterval) {
     const x = Math.round((t / duration) * barWidth) + 0.5;
     if (x > barWidth) break;
-    timelineCtx.moveTo(x, tickAreaTop);
-    timelineCtx.lineTo(x, tickAreaTop + 7);
-    const m = Math.floor(t / 60);
-    const s = t % 60;
+    tCtx.moveTo(x, tickAreaTop);
+    tCtx.lineTo(x, tickAreaTop + 7);
+    const mm = Math.floor(t / 60);
+    const ss = t % 60;
     const label = majorInterval < 1
-      ? `${m}:${s.toFixed(1).padStart(4, '0')}`
-      : `${m}:${Math.floor(s).toString().padStart(2, '0')}`;
-    timelineCtx.fillText(label, x, tickAreaTop + 5);
+      ? `${mm}:${ss.toFixed(1).padStart(4, '0')}`
+      : `${mm}:${Math.floor(ss).toString().padStart(2, '0')}`;
+    tCtx.fillText(label, x, tickAreaTop + 5);
   }
-  timelineCtx.stroke();
+  tCtx.stroke();
 
-  updateTimelineViewport();
+  updateTimelineViewport(track);
 }
 
-// ── Timeline Viewport Indicator ───────────────────────────────────────
-function updateTimelineViewport() {
-  if (!state.spectrogramData) return;
-  const barWidth = timelineBar.clientWidth;
-  const totalCanvasWidth = canvas.width;
+// == Timeline Viewport ========================================================
+function updateTimelineViewport(track) {
+  if (!track.spectrogramData) return;
+  const d = track.dom;
+  const barWidth = d.timelineBar.clientWidth;
+  const totalCanvasWidth = d.canvas.width;
   if (totalCanvasWidth <= 0) return;
 
-  const scrollLeft = spectrogramWrap.scrollLeft;
-  const visibleWidth = spectrogramWrap.clientWidth;
-
+  const scrollLeft = d.spectrogramWrap.scrollLeft;
+  const visibleWidth = d.spectrogramWrap.clientWidth;
   const leftFrac = scrollLeft / totalCanvasWidth;
   const visFrac = visibleWidth / totalCanvasWidth;
 
-  timelineViewport.style.left = (leftFrac * barWidth) + 'px';
-  timelineViewport.style.width = Math.max(4, visFrac * barWidth) + 'px';
+  d.timelineViewport.style.left = (leftFrac * barWidth) + 'px';
+  d.timelineViewport.style.width = Math.max(4, visFrac * barWidth) + 'px';
 }
 
-// ── Timeline Scroll Sync ──────────────────────────────────────────────
-spectrogramWrap.addEventListener('scroll', updateTimelineViewport);
-
-// ── Timeline Interactions ─────────────────────────────────────────────
-timelineBar.addEventListener('pointerdown', (e) => {
-  if (!state.spectrogramData) return;
-  const barRect = timelineBar.getBoundingClientRect();
-
-  if (e.target === timelineViewport) {
-    // Drag viewport to pan
-    e.preventDefault();
-    const startX = e.clientX;
-    const startScroll = spectrogramWrap.scrollLeft;
-    const barWidth = timelineBar.clientWidth;
-    const totalCanvasWidth = canvas.width;
-
-    function onMove(ev) {
-      const dx = ev.clientX - startX;
-      const scrollDelta = (dx / barWidth) * totalCanvasWidth;
-      spectrogramWrap.scrollLeft = startScroll + scrollDelta;
-    }
-
-    function onUp() {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-    }
-
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
+// == Playback =================================================================
+function togglePlay(track) {
+  if (track.isPlaying) {
+    stopPlayback(track);
   } else {
-    // Click to navigate: center spectrogram on clicked time
-    const x = e.clientX - barRect.left;
-    const barWidth = timelineBar.clientWidth;
-    const frac = x / barWidth;
-    const targetScrollCenter = frac * canvas.width;
-    spectrogramWrap.scrollLeft = targetScrollCenter - spectrogramWrap.clientWidth / 2;
-  }
-});
-
-// ── Show Editor ──────────────────────────────────────────────────────────
-function showEditor() {
-  editorEl.style.display = 'block';
-  audioTitle.textContent = state.filename;
-  updateTimeDisplay();
-}
-
-// ── Time Formatting ──────────────────────────────────────────────────────
-function formatTime(sec) {
-  const m = Math.floor(sec / 60);
-  const s = (sec % 60).toFixed(1);
-  return `${m}:${s.padStart(4, '0')}`;
-}
-
-function updateTimeDisplay() {
-  const cur = state.isPlaying
-    ? state.playOffset + (state.audioContext.currentTime - state.playStartTime)
-    : state.playOffset;
-  timeDisplay.textContent = `${formatTime(Math.min(cur, state.duration))} / ${formatTime(state.duration)}`;
-}
-
-// ── Playback ─────────────────────────────────────────────────────────────
-playBtn.addEventListener('click', togglePlay);
-
-function togglePlay() {
-  if (state.isPlaying) {
-    stopPlayback();
-  } else {
-    startPlayback(state.playOffset);
+    startPlayback(track, track.playOffset);
   }
 }
 
-function startPlayback(offset) {
-  if (!state.audioBuffer || !state.audioContext) return;
-  if (state.audioContext.state === 'suspended') state.audioContext.resume();
+function startPlayback(track, offset) {
+  if (!track.audioBuffer) return;
+  if (sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
 
-  if (state.sourceNode) {
-    state.sourceNode.onended = null;
-    state.sourceNode.stop();
+  if (track.sourceNode) {
+    track.sourceNode.onended = null;
+    track.sourceNode.stop();
   }
 
-  const source = state.audioContext.createBufferSource();
-  source.buffer = state.audioBuffer;
-  source.connect(state.audioContext.destination);
+  const source = sharedAudioCtx.createBufferSource();
+  source.buffer = track.audioBuffer;
+  source.connect(sharedAudioCtx.destination);
   source.onended = () => {
-    if (state.isPlaying) {
-      state.isPlaying = false;
-      state.playOffset = 0;
-      playBtn.textContent = 'Play';
-      updatePlayhead();
+    if (track.isPlaying) {
+      track.isPlaying = false;
+      track.playOffset = 0;
+      track.dom.playBtn.textContent = 'Play';
+      updatePlayhead(track);
     }
   };
 
-  state.sourceNode = source;
-  state.playStartTime = state.audioContext.currentTime;
-  state.playOffset = offset;
-  state.isPlaying = true;
-  playBtn.textContent = 'Pause';
+  track.sourceNode = source;
+  track.playStartTime = sharedAudioCtx.currentTime;
+  track.playOffset = offset;
+  track.isPlaying = true;
+  track.dom.playBtn.textContent = 'Pause';
   source.start(0, offset);
-  animatePlayhead();
+  animatePlayhead(track);
 }
 
-function stopPlayback() {
-  if (state.sourceNode) {
-    state.sourceNode.onended = null;
-    state.sourceNode.stop();
+function stopPlayback(track) {
+  if (track.sourceNode) {
+    track.sourceNode.onended = null;
+    track.sourceNode.stop();
   }
-  state.playOffset = state.playOffset + (state.audioContext.currentTime - state.playStartTime);
-  if (state.playOffset >= state.duration) state.playOffset = 0;
-  state.isPlaying = false;
-  playBtn.textContent = 'Play';
-  if (state.animFrame) cancelAnimationFrame(state.animFrame);
-  updatePlayhead();
+  track.playOffset = track.playOffset + (sharedAudioCtx.currentTime - track.playStartTime);
+  if (track.playOffset >= track.duration) track.playOffset = 0;
+  track.isPlaying = false;
+  track.dom.playBtn.textContent = 'Play';
+  if (track.animFrame) cancelAnimationFrame(track.animFrame);
+  updatePlayhead(track);
 }
 
-function animatePlayhead() {
-  if (!state.isPlaying) return;
-  updatePlayhead();
-  updateTimeDisplay();
-  drawTimeline();
-  drawTimelinePlayhead();
-  state.animFrame = requestAnimationFrame(animatePlayhead);
+function animatePlayhead(track) {
+  if (!track.isPlaying) return;
+  updatePlayhead(track);
+  updateTimeDisplay(track);
+  drawTimeline(track);
+  drawTimelinePlayhead(track);
+  track.animFrame = requestAnimationFrame(() => animatePlayhead(track));
 }
 
-function updatePlayhead() {
-  const cur = state.isPlaying
-    ? state.playOffset + (state.audioContext.currentTime - state.playStartTime)
-    : state.playOffset;
-  const pxPos = (cur / state.duration) * canvas.width;
-  playhead.style.left = pxPos + 'px';
-  updateTimeDisplay();
+function updatePlayhead(track) {
+  const cur = track.isPlaying
+    ? track.playOffset + (sharedAudioCtx.currentTime - track.playStartTime)
+    : track.playOffset;
+  const pxPos = (cur / track.duration) * track.dom.canvas.width;
+  track.dom.playhead.style.left = pxPos + 'px';
+  updateTimeDisplay(track);
 }
 
-// ── Seek on Click / Drag-to-Select ───────────────────────────────────────
-(function() {
-  let isDragging = false;
-  let dragStartX = 0;       // px relative to canvas (includes scroll)
-  let dragStartClientX = 0; // raw clientX for threshold check
-  let selectionDiv = null;
-  const DRAG_THRESHOLD = 5; // px
+function updateTimeDisplay(track) {
+  const cur = track.isPlaying
+    ? track.playOffset + (sharedAudioCtx.currentTime - track.playStartTime)
+    : track.playOffset;
+  track.dom.timeDisplay.textContent = `${formatTime(Math.min(cur, track.duration))} / ${formatTime(track.duration)}`;
+}
 
-  spectrogramWrap.addEventListener('pointerdown', (e) => {
-    // Skip if clicking on a region or region-delete
-    if (e.target.closest('.region') || e.target.closest('.region-delete')) return;
-    // Only primary button
-    if (e.button !== 0) return;
+// == Timeline Playhead ========================================================
+function drawTimelinePlayhead(track) {
+  if (!track.waveformPeaks || !track.isPlaying) return;
+  const cur = track.playOffset + (sharedAudioCtx.currentTime - track.playStartTime);
+  const frac = Math.min(cur, track.duration) / track.duration;
+  const d = track.dom;
+  const barWidth = d.timelineBar.clientWidth;
+  const barHeight = d.timelineBar.clientHeight;
+  const dpr = window.devicePixelRatio || 1;
+  const x = frac * barWidth;
+  const tCtx = d.timelineCanvas.getContext('2d');
 
-    const wrapRect = spectrogramWrap.getBoundingClientRect();
-    dragStartX = e.clientX - wrapRect.left + spectrogramWrap.scrollLeft;
-    dragStartClientX = e.clientX;
-    isDragging = false;
+  tCtx.save();
+  tCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  tCtx.strokeStyle = '#fff';
+  tCtx.lineWidth = 1.5;
+  tCtx.beginPath();
+  tCtx.moveTo(x, 0);
+  tCtx.lineTo(x, barHeight);
+  tCtx.stroke();
+  tCtx.restore();
+}
 
-    // Create selection div but keep it hidden until threshold
-    selectionDiv = document.createElement('div');
-    selectionDiv.className = 'drag-selection';
-    selectionDiv.style.left = dragStartX + 'px';
-    selectionDiv.style.width = '0px';
-    selectionDiv.style.display = 'none';
-    overlay.appendChild(selectionDiv);
-
-    document.addEventListener('pointermove', onDragMove);
-    document.addEventListener('pointerup', onDragUp);
-  });
-
-  function onDragMove(e) {
-    const dx = e.clientX - dragStartClientX;
-    if (!isDragging && Math.abs(dx) < DRAG_THRESHOLD) return;
-    isDragging = true;
-    selectionDiv.style.display = 'block';
-
-    const wrapRect = spectrogramWrap.getBoundingClientRect();
-    const currentX = e.clientX - wrapRect.left + spectrogramWrap.scrollLeft;
-    const left = Math.max(0, Math.min(dragStartX, currentX));
-    const right = Math.min(canvas.width, Math.max(dragStartX, currentX));
-    selectionDiv.style.left = left + 'px';
-    selectionDiv.style.width = (right - left) + 'px';
-
-    // Auto-scroll when near edges
-    const edgeZone = 40;
-    if (e.clientX < wrapRect.left + edgeZone) {
-      spectrogramWrap.scrollLeft -= 8;
-    } else if (e.clientX > wrapRect.right - edgeZone) {
-      spectrogramWrap.scrollLeft += 8;
-    }
-  }
-
-  function onDragUp(e) {
-    document.removeEventListener('pointermove', onDragMove);
-    document.removeEventListener('pointerup', onDragUp);
-
-    // Clean up selection div
-    if (selectionDiv) {
-      selectionDiv.remove();
-      selectionDiv = null;
-    }
-
-    if (isDragging) {
-      // Create region from drag bounds
-      const wrapRect = spectrogramWrap.getBoundingClientRect();
-      const endX = e.clientX - wrapRect.left + spectrogramWrap.scrollLeft;
-      const x1 = Math.max(0, Math.min(dragStartX, endX));
-      const x2 = Math.min(canvas.width, Math.max(dragStartX, endX));
-      const t1 = (x1 / canvas.width) * state.duration;
-      const t2 = (x2 / canvas.width) * state.duration;
-
-      // Minimum 50ms region
-      if (t2 - t1 >= 0.05) {
-        const colorIdx = state.regions.length % REGION_COLORS.length;
-        const region = {
-          id: state.nextRegionId++,
-          start: t1,
-          end: t2,
-          color: REGION_COLORS[colorIdx],
-          borderColor: REGION_BORDER_COLORS[colorIdx],
-        };
-        state.regions.push(region);
-        createRegionElement(region);
-        updateRegionsList();
-      }
-    } else {
-      // Click → seek
-      const wrapRect = spectrogramWrap.getBoundingClientRect();
-      const x = e.clientX - wrapRect.left + spectrogramWrap.scrollLeft;
-      const time = (x / canvas.width) * state.duration;
-
-      if (state.isPlaying) {
-        stopPlayback();
-        startPlayback(Math.max(0, Math.min(time, state.duration)));
-      } else {
-        state.playOffset = Math.max(0, Math.min(time, state.duration));
-        updatePlayhead();
-      }
-    }
-
-    isDragging = false;
-  }
-})();
-
-// ── Zoom ─────────────────────────────────────────────────────────────────
-spectrogramWrap.addEventListener('wheel', (e) => {
-  e.preventDefault();
-
-  const rect = spectrogramWrap.getBoundingClientRect();
-  const mouseX = e.clientX - rect.left + spectrogramWrap.scrollLeft;
-  const timeAtMouse = (mouseX / canvas.width) * state.duration;
-
-  const factor = e.deltaY < 0 ? 1.2 : 1 / 1.2;
-  state.pxPerSec = Math.max(state.minPxPerSec, Math.min(state.maxPxPerSec, state.pxPerSec * factor));
-
-  drawSpectrogram();
-
-  // Keep the same time position under the mouse after zoom
-  const newMouseX = (timeAtMouse / state.duration) * canvas.width;
-  spectrogramWrap.scrollLeft = newMouseX - (e.clientX - rect.left);
-}, { passive: false });
-
-// ── Regions ──────────────────────────────────────────────────────────────
-addRegionBtn.addEventListener('click', () => {
-  // Default region: center 10% of visible area
-  const scrollFrac = spectrogramWrap.scrollLeft / (canvas.width || 1);
-  const visFrac = spectrogramWrap.clientWidth / (canvas.width || 1);
-  const centerTime = (scrollFrac + visFrac / 2) * state.duration;
-  const regionLen = Math.min(5, state.duration * 0.1); // 5 sec or 10% of duration
-  const start = Math.max(0, centerTime - regionLen / 2);
-  const end = Math.min(state.duration, start + regionLen);
-
-  const colorIdx = state.regions.length % REGION_COLORS.length;
-  const region = {
-    id: state.nextRegionId++,
-    start,
-    end,
-    color: REGION_COLORS[colorIdx],
-    borderColor: REGION_BORDER_COLORS[colorIdx],
-  };
-  state.regions.push(region);
-  createRegionElement(region);
-  updateRegionsList();
-});
-
-function createRegionElement(region) {
+// == Region Helpers ===========================================================
+function createRegionElement(track, region) {
+  const d = track.dom;
   const el = document.createElement('div');
   el.className = 'region';
   el.dataset.regionId = region.id;
@@ -1097,7 +1062,7 @@ function createRegionElement(region) {
   delBtn.textContent = '\u00d7';
   delBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    removeRegion(region.id);
+    removeRegion(track, region.id);
   });
   el.appendChild(delBtn);
 
@@ -1109,10 +1074,9 @@ function createRegionElement(region) {
   handleRight.className = 'handle handle-right';
   el.appendChild(handleRight);
 
-  overlay.appendChild(el);
+  d.overlay.appendChild(el);
 
-  // Drag logic
-  let dragType = null; // 'move', 'left', 'right'
+  let dragType = null;
   let dragStartX = 0;
   let dragStartStart = 0;
   let dragStartEnd = 0;
@@ -1126,7 +1090,7 @@ function createRegionElement(region) {
     else if (target === delBtn) return;
     else dragType = 'move';
 
-    dragStartX = e.clientX + spectrogramWrap.scrollLeft;
+    dragStartX = e.clientX + d.spectrogramWrap.scrollLeft;
     dragStartStart = region.start;
     dragStartEnd = region.end;
     document.addEventListener('pointermove', onPointerMove);
@@ -1134,25 +1098,25 @@ function createRegionElement(region) {
   }
 
   function onPointerMove(e) {
-    const dx = (e.clientX + spectrogramWrap.scrollLeft) - dragStartX;
-    const dt = (dx / canvas.width) * state.duration;
+    const dx = (e.clientX + d.spectrogramWrap.scrollLeft) - dragStartX;
+    const dt = (dx / d.canvas.width) * track.duration;
 
     if (dragType === 'move') {
       let newStart = dragStartStart + dt;
       let newEnd = dragStartEnd + dt;
       const len = newEnd - newStart;
       if (newStart < 0) { newStart = 0; newEnd = len; }
-      if (newEnd > state.duration) { newEnd = state.duration; newStart = newEnd - len; }
+      if (newEnd > track.duration) { newEnd = track.duration; newStart = newEnd - len; }
       region.start = newStart;
       region.end = newEnd;
     } else if (dragType === 'left') {
       region.start = Math.max(0, Math.min(region.end - 0.05, dragStartStart + dt));
     } else if (dragType === 'right') {
-      region.end = Math.min(state.duration, Math.max(region.start + 0.05, dragStartEnd + dt));
+      region.end = Math.min(track.duration, Math.max(region.start + 0.05, dragStartEnd + dt));
     }
 
-    positionRegionElement(el, region);
-    updateRegionsList();
+    positionRegionElement(track, el, region);
+    updateRegionsList(track);
   }
 
   function onPointerUp() {
@@ -1162,13 +1126,12 @@ function createRegionElement(region) {
   }
 
   el.addEventListener('pointerdown', onPointerDown);
-
-  positionRegionElement(el, region);
+  positionRegionElement(track, el, region);
 }
 
-function positionRegionElement(el, region) {
-  const leftPx = (region.start / state.duration) * canvas.width;
-  const rightPx = (region.end / state.duration) * canvas.width;
+function positionRegionElement(track, el, region) {
+  const leftPx = (region.start / track.duration) * track.dom.canvas.width;
+  const rightPx = (region.end / track.duration) * track.dom.canvas.width;
   el.style.left = leftPx + 'px';
   el.style.width = (rightPx - leftPx) + 'px';
 
@@ -1178,56 +1141,350 @@ function positionRegionElement(el, region) {
   }
 }
 
-function updateRegionPositions() {
-  const regionEls = overlay.querySelectorAll('.region');
+function updateRegionPositions(track) {
+  const regionEls = track.dom.overlay.querySelectorAll('.region');
   regionEls.forEach(el => {
     const id = parseInt(el.dataset.regionId);
-    const region = state.regions.find(r => r.id === id);
-    if (region) positionRegionElement(el, region);
+    const region = track.regions.find(r => r.id === id);
+    if (region) positionRegionElement(track, el, region);
   });
 }
 
-function removeRegion(id) {
-  state.regions = state.regions.filter(r => r.id !== id);
-  const el = overlay.querySelector(`.region[data-region-id="${id}"]`);
+function removeRegion(track, id) {
+  track.regions = track.regions.filter(r => r.id !== id);
+  const el = track.dom.overlay.querySelector(`.region[data-region-id="${id}"]`);
   if (el) el.remove();
-  updateRegionsList();
+  updateRegionsList(track);
 }
 
-function updateRegionsList() {
-  regionsList.innerHTML = '';
-  state.regions.forEach(r => {
+function updateRegionsList(track) {
+  const d = track.dom;
+  d.regionsList.innerHTML = '';
+  track.regions.forEach(r => {
     const tag = document.createElement('div');
     tag.className = 'region-tag';
-    tag.innerHTML = `
-      <span class="color-dot" style="background:${r.borderColor}"></span>
-      ${formatTime(r.start)} - ${formatTime(r.end)}
-      <button class="btn-danger" onclick="window._removeRegion(${r.id})">\u00d7</button>
-    `;
-    regionsList.appendChild(tag);
+    const dot = document.createElement('span');
+    dot.className = 'color-dot';
+    dot.style.background = r.borderColor;
+    tag.appendChild(dot);
+    tag.appendChild(document.createTextNode(` ${formatTime(r.start)} - ${formatTime(r.end)} `));
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn-danger';
+    delBtn.textContent = '\u00d7';
+    delBtn.addEventListener('click', () => removeRegion(track, r.id));
+    tag.appendChild(delBtn);
+    d.regionsList.appendChild(tag);
   });
 }
 
-// Expose for inline onclick
-window._removeRegion = removeRegion;
+// == Dynamic Track Panel ======================================================
+function createTrackPanel(track) {
+  const card = document.createElement('div');
+  card.className = 'track-card';
+  card.dataset.trackId = track.id;
 
-// ── Clip & Download ──────────────────────────────────────────────────────
-clipBtn.addEventListener('click', async () => {
-  if (!state.fileId || state.regions.length === 0) {
-    alert('Add at least one region first.');
+  card.innerHTML = `
+    <div class="toolbar">
+      <span class="title"></span>
+      <span class="time-display">0:00.0 / 0:00.0</span>
+      <button class="btn-secondary play-btn">Play</button>
+      <button class="btn-secondary add-region-btn">+ Region</button>
+      <button class="btn-danger remove-track-btn">Remove</button>
+    </div>
+    <div class="spectrogram-wrap">
+      <canvas></canvas>
+      <div class="overlay">
+        <div class="playhead" style="left:0"></div>
+      </div>
+    </div>
+    <div class="timeline-bar">
+      <canvas></canvas>
+      <div class="timeline-viewport"></div>
+    </div>
+    <div class="zoom-info">Scroll to zoom. Click to seek. Drag to select a region.</div>
+    <div class="regions-list"></div>
+  `;
+
+  tracksContainer.appendChild(card);
+
+  // Store DOM references
+  const d = track.dom;
+  d.card = card;
+  d.titleEl = card.querySelector('.title');
+  d.timeDisplay = card.querySelector('.time-display');
+  d.playBtn = card.querySelector('.play-btn');
+  d.addRegionBtn = card.querySelector('.add-region-btn');
+  d.removeBtn = card.querySelector('.remove-track-btn');
+  d.spectrogramWrap = card.querySelector('.spectrogram-wrap');
+  d.canvas = d.spectrogramWrap.querySelector('canvas');
+  d.overlay = card.querySelector('.overlay');
+  d.playhead = card.querySelector('.playhead');
+  d.timelineBar = card.querySelector('.timeline-bar');
+  d.timelineCanvas = d.timelineBar.querySelector('canvas');
+  d.timelineViewport = card.querySelector('.timeline-viewport');
+  d.regionsList = card.querySelector('.regions-list');
+
+  d.titleEl.textContent = track.filename;
+
+  initTrack(track);
+
+  // Set as active
+  setActiveTrack(track.id);
+}
+
+// == Init Track (attach handlers) =============================================
+function initTrack(track) {
+  const d = track.dom;
+
+  // Play/pause
+  d.playBtn.addEventListener('click', () => togglePlay(track));
+
+  // Add region
+  d.addRegionBtn.addEventListener('click', () => {
+    const scrollFrac = d.spectrogramWrap.scrollLeft / (d.canvas.width || 1);
+    const visFrac = d.spectrogramWrap.clientWidth / (d.canvas.width || 1);
+    const centerTime = (scrollFrac + visFrac / 2) * track.duration;
+    const regionLen = Math.min(5, track.duration * 0.1);
+    const start = Math.max(0, centerTime - regionLen / 2);
+    const end = Math.min(track.duration, start + regionLen);
+
+    const colorIdx = track.regions.length % REGION_COLORS.length;
+    const region = {
+      id: track.nextRegionId++,
+      start,
+      end,
+      color: REGION_COLORS[colorIdx],
+      borderColor: REGION_BORDER_COLORS[colorIdx],
+    };
+    track.regions.push(region);
+    createRegionElement(track, region);
+    updateRegionsList(track);
+  });
+
+  // Remove track
+  d.removeBtn.addEventListener('click', () => removeTrack(track.id));
+
+  // Scroll sync
+  d.spectrogramWrap.addEventListener('scroll', () => updateTimelineViewport(track));
+
+  // Zoom
+  d.spectrogramWrap.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = d.spectrogramWrap.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left + d.spectrogramWrap.scrollLeft;
+    const timeAtMouse = (mouseX / d.canvas.width) * track.duration;
+
+    const factor = e.deltaY < 0 ? 1.2 : 1 / 1.2;
+    track.pxPerSec = Math.max(track.minPxPerSec, Math.min(track.maxPxPerSec, track.pxPerSec * factor));
+
+    drawSpectrogram(track);
+
+    const newMouseX = (timeAtMouse / track.duration) * d.canvas.width;
+    d.spectrogramWrap.scrollLeft = newMouseX - (e.clientX - rect.left);
+  }, { passive: false });
+
+  // Click-to-seek / drag-to-select
+  initDragSelect(track);
+
+  // Timeline interactions
+  initTimelineInteractions(track);
+
+  // Set active on pointerdown
+  d.card.addEventListener('pointerdown', () => setActiveTrack(track.id));
+}
+
+// == Drag to Select / Seek ====================================================
+function initDragSelect(track) {
+  const d = track.dom;
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartClientX = 0;
+  let selectionDiv = null;
+  const DRAG_THRESHOLD = 5;
+
+  d.spectrogramWrap.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.region') || e.target.closest('.region-delete')) return;
+    if (e.button !== 0) return;
+
+    const wrapRect = d.spectrogramWrap.getBoundingClientRect();
+    dragStartX = e.clientX - wrapRect.left + d.spectrogramWrap.scrollLeft;
+    dragStartClientX = e.clientX;
+    isDragging = false;
+
+    selectionDiv = document.createElement('div');
+    selectionDiv.className = 'drag-selection';
+    selectionDiv.style.left = dragStartX + 'px';
+    selectionDiv.style.width = '0px';
+    selectionDiv.style.display = 'none';
+    d.overlay.appendChild(selectionDiv);
+
+    document.addEventListener('pointermove', onDragMove);
+    document.addEventListener('pointerup', onDragUp);
+  });
+
+  function onDragMove(e) {
+    const dx = e.clientX - dragStartClientX;
+    if (!isDragging && Math.abs(dx) < DRAG_THRESHOLD) return;
+    isDragging = true;
+    selectionDiv.style.display = 'block';
+
+    const wrapRect = d.spectrogramWrap.getBoundingClientRect();
+    const currentX = e.clientX - wrapRect.left + d.spectrogramWrap.scrollLeft;
+    const left = Math.max(0, Math.min(dragStartX, currentX));
+    const right = Math.min(d.canvas.width, Math.max(dragStartX, currentX));
+    selectionDiv.style.left = left + 'px';
+    selectionDiv.style.width = (right - left) + 'px';
+
+    const edgeZone = 40;
+    if (e.clientX < wrapRect.left + edgeZone) {
+      d.spectrogramWrap.scrollLeft -= 8;
+    } else if (e.clientX > wrapRect.right - edgeZone) {
+      d.spectrogramWrap.scrollLeft += 8;
+    }
+  }
+
+  function onDragUp(e) {
+    document.removeEventListener('pointermove', onDragMove);
+    document.removeEventListener('pointerup', onDragUp);
+
+    if (selectionDiv) {
+      selectionDiv.remove();
+      selectionDiv = null;
+    }
+
+    if (isDragging) {
+      const wrapRect = d.spectrogramWrap.getBoundingClientRect();
+      const endX = e.clientX - wrapRect.left + d.spectrogramWrap.scrollLeft;
+      const x1 = Math.max(0, Math.min(dragStartX, endX));
+      const x2 = Math.min(d.canvas.width, Math.max(dragStartX, endX));
+      const t1 = (x1 / d.canvas.width) * track.duration;
+      const t2 = (x2 / d.canvas.width) * track.duration;
+
+      if (t2 - t1 >= 0.05) {
+        const colorIdx = track.regions.length % REGION_COLORS.length;
+        const region = {
+          id: track.nextRegionId++,
+          start: t1,
+          end: t2,
+          color: REGION_COLORS[colorIdx],
+          borderColor: REGION_BORDER_COLORS[colorIdx],
+        };
+        track.regions.push(region);
+        createRegionElement(track, region);
+        updateRegionsList(track);
+      }
+    } else {
+      const wrapRect = d.spectrogramWrap.getBoundingClientRect();
+      const x = e.clientX - wrapRect.left + d.spectrogramWrap.scrollLeft;
+      const time = (x / d.canvas.width) * track.duration;
+
+      if (track.isPlaying) {
+        stopPlayback(track);
+        startPlayback(track, Math.max(0, Math.min(time, track.duration)));
+      } else {
+        track.playOffset = Math.max(0, Math.min(time, track.duration));
+        updatePlayhead(track);
+      }
+    }
+
+    isDragging = false;
+  }
+}
+
+// == Timeline Interactions ====================================================
+function initTimelineInteractions(track) {
+  const d = track.dom;
+
+  d.timelineBar.addEventListener('pointerdown', (e) => {
+    if (!track.spectrogramData) return;
+    const barRect = d.timelineBar.getBoundingClientRect();
+
+    if (e.target === d.timelineViewport) {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startScroll = d.spectrogramWrap.scrollLeft;
+      const barWidth = d.timelineBar.clientWidth;
+      const totalCanvasWidth = d.canvas.width;
+
+      function onMove(ev) {
+        const dx = ev.clientX - startX;
+        const scrollDelta = (dx / barWidth) * totalCanvasWidth;
+        d.spectrogramWrap.scrollLeft = startScroll + scrollDelta;
+      }
+
+      function onUp() {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+      }
+
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    } else {
+      const x = e.clientX - barRect.left;
+      const barWidth = d.timelineBar.clientWidth;
+      const frac = x / barWidth;
+      const targetScrollCenter = frac * d.canvas.width;
+      d.spectrogramWrap.scrollLeft = targetScrollCenter - d.spectrogramWrap.clientWidth / 2;
+    }
+  });
+}
+
+// == Active Track =============================================================
+function setActiveTrack(id) {
+  activeTrackId = id;
+  document.querySelectorAll('.track-card').forEach(card => {
+    card.classList.toggle('active', parseInt(card.dataset.trackId) === id);
+  });
+}
+
+function getActiveTrack() {
+  return tracks.find(t => t.id === activeTrackId) || null;
+}
+
+// == Remove Track =============================================================
+function removeTrack(id) {
+  const idx = tracks.findIndex(t => t.id === id);
+  if (idx === -1) return;
+  const track = tracks[idx];
+
+  if (track.isPlaying) stopPlayback(track);
+  if (track.animFrame) cancelAnimationFrame(track.animFrame);
+  track.dom.card.remove();
+  tracks.splice(idx, 1);
+
+  if (activeTrackId === id) {
+    activeTrackId = tracks.length > 0 ? tracks[0].id : null;
+    if (activeTrackId) setActiveTrack(activeTrackId);
+  }
+
+  updateGlobalControls();
+}
+
+// == Global Controls ==========================================================
+function updateGlobalControls() {
+  globalControls.classList.toggle('visible', tracks.length > 0);
+}
+
+clipAllBtn.addEventListener('click', async () => {
+  const tracksWithRegions = tracks.filter(t => t.regions.length > 0);
+  if (tracksWithRegions.length === 0) {
+    alert('Add at least one region to a track first.');
     return;
   }
 
-  clipBtn.disabled = true;
-  clipBtn.textContent = 'Clipping...';
+  clipAllBtn.disabled = true;
+  clipAllBtn.textContent = 'Clipping...';
 
   try {
-    const resp = await fetch('/api/clip', {
+    const resp = await fetch('/api/clip-multi', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        file_id: state.fileId,
-        regions: state.regions.map(r => ({ start: r.start, end: r.end })),
+        tracks: tracksWithRegions.map(t => ({
+          file_id: t.fileId,
+          track_name: t.filename,
+          regions: t.regions.map(r => ({ start: r.start, end: r.end })),
+        })),
       }),
     });
 
@@ -1240,7 +1497,7 @@ clipBtn.addEventListener('click', async () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'clips.zip';
+    a.download = 'clips_multi.zip';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1248,39 +1505,62 @@ clipBtn.addEventListener('click', async () => {
   } catch (e) {
     alert('Error: ' + e.message);
   } finally {
-    clipBtn.disabled = false;
-    clipBtn.textContent = 'Clip All';
+    clipAllBtn.disabled = false;
+    clipAllBtn.textContent = 'Clip All Tracks';
   }
 });
 
-// ── Window Resize ─────────────────────────────────────────────────────
+stopAllBtn.addEventListener('click', () => {
+  for (const track of tracks) {
+    if (track.isPlaying) stopPlayback(track);
+  }
+});
+
+// == Keyboard Shortcuts =======================================================
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  const track = getActiveTrack();
+  if (!track || !track.audioBuffer) return;
+
+  if (e.key === ' ') {
+    e.preventDefault();
+    togglePlay(track);
+    return;
+  }
+
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    e.preventDefault();
+    const delta = e.shiftKey ? 1.0 : 0.1;
+    const direction = e.key === 'ArrowLeft' ? -1 : 1;
+
+    let cur;
+    if (track.isPlaying) {
+      cur = track.playOffset + (sharedAudioCtx.currentTime - track.playStartTime);
+    } else {
+      cur = track.playOffset;
+    }
+
+    const newTime = Math.max(0, Math.min(track.duration, cur + direction * delta));
+
+    if (track.isPlaying) {
+      stopPlayback(track);
+      startPlayback(track, newTime);
+    } else {
+      track.playOffset = newTime;
+      updatePlayhead(track);
+    }
+  }
+});
+
+// == Window Resize ============================================================
 window.addEventListener('resize', () => {
-  if (state.audioBuffer) {
-    computeWaveformPeaks();
-    drawTimeline();
+  for (const track of tracks) {
+    if (track.audioBuffer) {
+      computeWaveformPeaks(track);
+      drawTimeline(track);
+    }
   }
 });
-
-// ── Timeline Playhead ─────────────────────────────────────────────────
-function drawTimelinePlayhead() {
-  if (!state.waveformPeaks || !state.isPlaying) return;
-  const cur = state.playOffset + (state.audioContext.currentTime - state.playStartTime);
-  const frac = Math.min(cur, state.duration) / state.duration;
-  const barWidth = timelineBar.clientWidth;
-  const barHeight = timelineBar.clientHeight;
-  const dpr = window.devicePixelRatio || 1;
-  const x = frac * barWidth;
-
-  timelineCtx.save();
-  timelineCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  timelineCtx.strokeStyle = '#fff';
-  timelineCtx.lineWidth = 1.5;
-  timelineCtx.beginPath();
-  timelineCtx.moveTo(x, 0);
-  timelineCtx.lineTo(x, barHeight);
-  timelineCtx.stroke();
-  timelineCtx.restore();
-}
 </script>
 </body>
 </html>

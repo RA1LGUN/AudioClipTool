@@ -454,6 +454,59 @@ button {
   margin-top: 6px;
 }
 
+/* -- JSON Result Panel --------------------------------------------------- */
+#json-result-panel {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0,0,0,0.6);
+  justify-content: center;
+  align-items: center;
+}
+#json-result-panel.visible {
+  display: flex;
+}
+#json-result-panel .panel-inner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 700px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+#json-result-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+#json-result-panel .panel-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+#json-result-panel .panel-header .panel-actions {
+  display: flex;
+  gap: 8px;
+}
+#json-result-panel .panel-body {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 20px;
+}
+#json-result-panel .panel-body pre {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}
+
 /* -- Global Controls Bar ------------------------------------------------- */
 #global-controls {
   position: fixed;
@@ -504,6 +557,22 @@ button {
 <div id="global-controls">
   <button class="btn-primary" id="clip-all-btn">Clip All Tracks</button>
   <button class="btn-secondary" id="stop-all-btn">Stop All</button>
+</div>
+
+<!-- JSON Result Panel -->
+<div id="json-result-panel">
+  <div class="panel-inner">
+    <div class="panel-header">
+      <h3>Clip Results</h3>
+      <div class="panel-actions">
+        <button class="btn-primary" id="download-json-btn">Download JSON</button>
+        <button class="btn-secondary" id="close-json-panel-btn">Close</button>
+      </div>
+    </div>
+    <div class="panel-body">
+      <pre id="json-result-content"></pre>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -568,6 +637,11 @@ const tracksContainer = document.getElementById('tracks-container');
 const globalControls = document.getElementById('global-controls');
 const clipAllBtn = document.getElementById('clip-all-btn');
 const stopAllBtn = document.getElementById('stop-all-btn');
+const jsonResultPanel = document.getElementById('json-result-panel');
+const jsonResultContent = document.getElementById('json-result-content');
+const downloadJsonBtn = document.getElementById('download-json-btn');
+const closeJsonPanelBtn = document.getElementById('close-json-panel-btn');
+let lastClipResult = null;
 
 addBtn.addEventListener('click', addUrls);
 urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addUrls(); });
@@ -1612,15 +1686,10 @@ clipAllBtn.addEventListener('click', async () => {
       throw new Error(err.detail || 'Clip failed');
     }
 
-    const blob = await resp.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'clips_multi.zip';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const data = await resp.json();
+    lastClipResult = data;
+    jsonResultContent.textContent = JSON.stringify(data, null, 2);
+    jsonResultPanel.classList.add('visible');
   } catch (e) {
     alert('Error: ' + e.message);
   } finally {
@@ -1633,6 +1702,24 @@ stopAllBtn.addEventListener('click', () => {
   for (const track of tracks) {
     if (track.isPlaying) stopPlayback(track);
   }
+});
+
+// == JSON Result Panel ========================================================
+closeJsonPanelBtn.addEventListener('click', () => {
+  jsonResultPanel.classList.remove('visible');
+});
+jsonResultPanel.addEventListener('click', (e) => {
+  if (e.target === jsonResultPanel) jsonResultPanel.classList.remove('visible');
+});
+downloadJsonBtn.addEventListener('click', () => {
+  if (!lastClipResult) return;
+  const blob = new Blob([JSON.stringify(lastClipResult, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'clip-results.json';
+  a.click();
+  URL.revokeObjectURL(url);
 });
 
 // == Keyboard Shortcuts =======================================================

@@ -1,10 +1,18 @@
 """MMAE - Music/Media Audio Editor backend."""
 
+import logging
 import os
 import uuid
 import time
 import io
 from pathlib import Path
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("mmae")
 
 import boto3
 from dotenv import load_dotenv
@@ -81,6 +89,7 @@ def get_audio_path(file_id: str) -> Path:
 
 def upload_to_r2(data: bytes, key: str) -> str:
     """Upload bytes to Cloudflare R2 and return the public URL."""
+    logger.info("R2 upload: key=%s size=%d bytes", key, len(data))
     client = boto3.client(
         "s3",
         endpoint_url=R2_ENDPOINT_URL,
@@ -93,7 +102,9 @@ def upload_to_r2(data: bytes, key: str) -> str:
         Body=data,
         ContentType="audio/wav",
     )
-    return f"{R2_PUBLIC_URL.rstrip('/')}/{key}"
+    url = f"{R2_PUBLIC_URL.rstrip('/')}/{key}"
+    logger.info("R2 upload done: %s", url)
+    return url
 
 
 # ── Routes ──────────────────────────────────────────────────────────────────
@@ -106,6 +117,7 @@ async def index():
 @app.post("/api/download")
 async def download_audio(req: DownloadRequest):
     # cleanup_old_files()
+    logger.info("POST /api/download url=%s", req.url)
 
     file_id = uuid.uuid4().hex[:12]
     output_path = DOWNLOADS_DIR / f"{file_id}.wav"
@@ -133,7 +145,9 @@ async def download_audio(req: DownloadRequest):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(req.url, download=True)
             title = info.get("title", "audio")
+            logger.info("yt-dlp done: title=%s file_id=%s", title, file_id)
     except Exception as e:
+        logger.error("yt-dlp failed: %s", e)
         raise HTTPException(status_code=400, detail=f"Download failed: {e}")
 
     if not output_path.exists():
@@ -141,6 +155,7 @@ async def download_audio(req: DownloadRequest):
 
     audio = AudioSegment.from_wav(str(output_path))
     duration = len(audio) / 1000.0  # seconds
+    logger.info("Download complete: file_id=%s duration=%.2fs", file_id, duration)
 
     return {
         "file_id": file_id,
@@ -151,9 +166,11 @@ async def download_audio(req: DownloadRequest):
 
 @app.post("/api/upload")
 async def upload_audio(files: list[UploadFile] = File(...)):
+    logger.info("POST /api/upload files=%d", len(files))
     results = []
     for f in files:
         ext = Path(f.filename or "").suffix.lower()
+        logger.info("Processing upload: filename=%s ext=%s", f.filename, ext)
         if ext not in ALLOWED_AUDIO_EXTENSIONS:
             raise HTTPException(
                 status_code=400,
@@ -168,6 +185,7 @@ async def upload_audio(files: list[UploadFile] = File(...)):
         try:
             audio = AudioSegment.from_file(io.BytesIO(raw_bytes))
         except Exception as e:
+            logger.error("Decode failed for '%s': %s", f.filename, e)
             raise HTTPException(
                 status_code=400,
                 detail=f"Could not decode '{f.filename}': {e}",
@@ -177,6 +195,7 @@ async def upload_audio(files: list[UploadFile] = File(...)):
         duration = len(audio) / 1000.0
 
         original_name = Path(f.filename or "audio").stem
+        logger.info("Upload done: file_id=%s name=%s duration=%.2fs", file_id, original_name, duration)
         results.append({
             "file_id": file_id,
             "filename": original_name,
@@ -188,6 +207,7 @@ async def upload_audio(files: list[UploadFile] = File(...)):
 
 @app.get("/api/audio/{file_id}")
 async def serve_audio(file_id: str):
+    logger.info("GET /api/audio/%s", file_id)
     cleanup_old_files()
     path = get_audio_path(file_id)
     return FileResponse(path, media_type="audio/wav", filename=f"{file_id}.wav")
@@ -195,6 +215,7 @@ async def serve_audio(file_id: str):
 
 @app.post("/api/clip")
 async def clip_audio(req: ClipRequest):
+    logger.info("POST /api/clip file_id=%s regions=%d", req.file_id, len(req.regions))
     cleanup_old_files()
     path = get_audio_path(req.file_id)
 
@@ -225,6 +246,8 @@ async def clip_audio(req: ClipRequest):
 @app.post("/api/clip-multi")
 async def clip_multi(req: ClipMultiRequest):
     # cleanup_old_files()
+    total_regions = sum(len(t.regions) for t in req.tracks)
+    logger.info("POST /api/clip-multi tracks=%d total_regions=%d", len(req.tracks), total_regions)
 
     if not req.tracks:
         raise HTTPException(status_code=400, detail="No tracks specified")
@@ -235,7 +258,9 @@ async def clip_multi(req: ClipMultiRequest):
     for track in req.tracks:
         path = get_audio_path(track.file_id)
         if not track.regions:
+            logger.info("  Track '%s' has no regions, skipping", track.track_name)
             continue
+        logger.info("  Track '%s' file_id=%s regions=%d", track.track_name, track.file_id, len(track.regions))
         audio = AudioSegment.from_wav(str(path))
         safe_name = "".join(
             c if c.isalnum() or c in (" ", "-", "_") else "_"
@@ -254,6 +279,7 @@ async def clip_multi(req: ClipMultiRequest):
             name = f"clip_{i:03d}_{region.start:.2f}s-{region.end:.2f}s.wav"
             key = f"clips/{timestamp}_{safe_name}/{name}"
             url = upload_to_r2(clip_bytes, key)
+            logger.info("    Clip %d: %.2fs-%.2fs name=%s", i, region.start, region.end, name)
 
             data_items.append({"content": name, "type": "TITLE"})
             data_items.append({"content": url, "type": "AUDIO"})
@@ -263,6 +289,7 @@ async def clip_multi(req: ClipMultiRequest):
             })
             data_items.append({"content": f"Download URL {url}", "type": "TEXT"})
 
+    logger.info("clip-multi done: %d data items generated", len(data_items))
     return [{"info": {"data": data_items}}]
 
 

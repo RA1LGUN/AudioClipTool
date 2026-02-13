@@ -282,7 +282,7 @@ async def clip_multi(req: ClipMultiRequest):
             logger.info("    Clip %d: %.3fs-%.3fs name=%s", i, region.start, region.end, name)
 
             data_items.append({"content": name, "type": "TITLE"})
-            data_items.append({"content": url, "type": "AUDIO"})
+            data_items.append({"content": f"https://{url}", "type": "AUDIO"})
             data_items.append({
                 "content": f"start timestamp {region.start:.3f} / end timestamp {region.end:.3f}",
                 "type": "TEXT",

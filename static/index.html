@@ -402,6 +402,27 @@ button {
   display: inline-block;
 }
 
+.region-tag .time-input {
+  width: 72px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-family: monospace;
+  font-size: 13px;
+  text-align: center;
+}
+
+.region-tag .time-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.region-tag .time-sep {
+  color: var(--text-dim);
+}
+
 /* -- Timeline Bar -------------------------------------------------------- */
 .timeline-bar {
   position: relative;
@@ -614,6 +635,19 @@ function formatTime(sec) {
   const m = Math.floor(sec / 60);
   const s = (sec % 60).toFixed(3);
   return `${m}:${s.padStart(6, '0')}`;
+}
+
+function parseTime(str) {
+  const parts = str.trim().split(':');
+  if (parts.length === 2) {
+    const m = parseInt(parts[0], 10);
+    const s = parseFloat(parts[1]);
+    if (!isNaN(m) && !isNaN(s) && m >= 0 && s >= 0 && s < 60) return m * 60 + s;
+  } else if (parts.length === 1) {
+    const s = parseFloat(parts[0]);
+    if (!isNaN(s) && s >= 0) return s;
+  }
+  return null;
 }
 
 // == Shared State =============================================================
@@ -1309,7 +1343,7 @@ function createRegionElement(track, region) {
     }
 
     positionRegionElement(track, el, region);
-    updateRegionsList(track);
+    syncRegionTagValues(track);
   }
 
   function onPointerUp() {
@@ -1350,6 +1384,16 @@ function removeRegion(track, id) {
   updateRegionsList(track);
 }
 
+function syncRegionTagValues(track) {
+  const tags = track.dom.regionsList.querySelectorAll('.region-tag');
+  track.regions.forEach((r, i) => {
+    if (!tags[i]) return;
+    const inputs = tags[i].querySelectorAll('.time-input');
+    if (inputs[0] && document.activeElement !== inputs[0]) inputs[0].value = formatTime(r.start);
+    if (inputs[1] && document.activeElement !== inputs[1]) inputs[1].value = formatTime(r.end);
+  });
+}
+
 function updateRegionsList(track) {
   const d = track.dom;
   d.regionsList.innerHTML = '';
@@ -1360,7 +1404,53 @@ function updateRegionsList(track) {
     dot.className = 'color-dot';
     dot.style.background = r.borderColor;
     tag.appendChild(dot);
-    tag.appendChild(document.createTextNode(` ${formatTime(r.start)} - ${formatTime(r.end)} `));
+
+    const startInput = document.createElement('input');
+    startInput.className = 'time-input';
+    startInput.type = 'text';
+    startInput.value = formatTime(r.start);
+
+    const sep = document.createElement('span');
+    sep.className = 'time-sep';
+    sep.textContent = ' - ';
+
+    const endInput = document.createElement('input');
+    endInput.className = 'time-input';
+    endInput.type = 'text';
+    endInput.value = formatTime(r.end);
+
+    function applyEdit() {
+      const newStart = parseTime(startInput.value);
+      const newEnd = parseTime(endInput.value);
+      if (newStart === null || newEnd === null) {
+        startInput.value = formatTime(r.start);
+        endInput.value = formatTime(r.end);
+        return;
+      }
+      const s = Math.max(0, Math.min(newStart, track.duration));
+      const e = Math.max(0, Math.min(newEnd, track.duration));
+      if (e - s < 0.05) {
+        startInput.value = formatTime(r.start);
+        endInput.value = formatTime(r.end);
+        return;
+      }
+      r.start = s;
+      r.end = e;
+      startInput.value = formatTime(r.start);
+      endInput.value = formatTime(r.end);
+      const el = d.overlay.querySelector(`.region[data-region-id="${r.id}"]`);
+      if (el) positionRegionElement(track, el, r);
+    }
+
+    startInput.addEventListener('change', applyEdit);
+    endInput.addEventListener('change', applyEdit);
+    startInput.addEventListener('keydown', e => { if (e.key === 'Enter') { startInput.blur(); } });
+    endInput.addEventListener('keydown', e => { if (e.key === 'Enter') { endInput.blur(); } });
+
+    tag.appendChild(startInput);
+    tag.appendChild(sep);
+    tag.appendChild(endInput);
+
     const delBtn = document.createElement('button');
     delBtn.className = 'btn-danger';
     delBtn.textContent = '\u00d7';

@@ -235,7 +235,7 @@ async def clip_audio(req: ClipRequest):
         clip.export(clip_buf, format="wav")
         clip_bytes = clip_buf.getvalue()
 
-        name = f"clip_{i:03d}_{region.start:.2f}s-{region.end:.2f}s.wav"
+        name = f"clip_{i:03d}_{region.start:.3f}s-{region.end:.3f}s.wav"
         key = f"clips/{timestamp}_{req.file_id}/{name}"
         url = upload_to_r2(clip_bytes, key)
         clips.append({"name": name, "url": url})
@@ -276,15 +276,15 @@ async def clip_multi(req: ClipMultiRequest):
             clip.export(clip_buf, format="wav")
             clip_bytes = clip_buf.getvalue()
 
-            name = f"clip_{i:03d}_{region.start:.2f}s-{region.end:.2f}s.wav"
+            name = f"clip_{i:03d}_{region.start:.3f}s-{region.end:.3f}s.wav"
             key = f"clips/{timestamp}_{safe_name}/{name}"
             url = upload_to_r2(clip_bytes, key)
-            logger.info("    Clip %d: %.2fs-%.2fs name=%s", i, region.start, region.end, name)
+            logger.info("    Clip %d: %.3fs-%.3fs name=%s", i, region.start, region.end, name)
 
             data_items.append({"content": name, "type": "TITLE"})
             data_items.append({"content": url, "type": "AUDIO"})
             data_items.append({
-                "content": f"start timestamp {region.start:.2f} / end timestamp {region.end:.2f}",
+                "content": f"start timestamp {region.start:.3f} / end timestamp {region.end:.3f}",
                 "type": "TEXT",
             })
             # data_items.append({"content": f"Download URL {url}", "type": "TEXT"})

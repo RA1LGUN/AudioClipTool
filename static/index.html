@@ -279,7 +279,7 @@ button {
   font-family: monospace;
   font-size: 13px;
   color: var(--text-dim);
-  min-width: 120px;
+  min-width: 160px;
 }
 
 /* -- Spectrogram Container ----------------------------------------------- */
@@ -612,8 +612,8 @@ for (let i = 0; i < 256; i++) {
 
 function formatTime(sec) {
   const m = Math.floor(sec / 60);
-  const s = (sec % 60).toFixed(1);
-  return `${m}:${s.padStart(4, '0')}`;
+  const s = (sec % 60).toFixed(3);
+  return `${m}:${s.padStart(6, '0')}`;
 }
 
 // == Shared State =============================================================
@@ -1111,7 +1111,7 @@ function drawTimeline(track) {
     const mm = Math.floor(t / 60);
     const ss = t % 60;
     const label = majorInterval < 1
-      ? `${mm}:${ss.toFixed(1).padStart(4, '0')}`
+      ? `${mm}:${ss.toFixed(3).padStart(6, '0')}`
       : `${mm}:${Math.floor(ss).toString().padStart(2, '0')}`;
     tCtx.fillText(label, x, tickAreaTop + 5);
   }
@@ -1379,7 +1379,7 @@ function createTrackPanel(track) {
   card.innerHTML = `
     <div class="toolbar">
       <span class="title"></span>
-      <span class="time-display">0:00.0 / 0:00.0</span>
+      <span class="time-display">0:00.000 / 0:00.000</span>
       <button class="btn-secondary play-btn">Play</button>
       <button class="btn-secondary add-region-btn">+ Region</button>
       <button class="btn-danger remove-track-btn">Remove</button>
